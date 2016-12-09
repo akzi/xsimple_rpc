@@ -113,6 +113,9 @@
     <ClCompile Include="unit_test.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\include\detail\detail.hpp" />
+    <ClInclude Include="..\include\detail\dispatcher.hpp" />
+    <ClInclude Include="..\include\endec.hpp" />
     <ClInclude Include="..\include\xsimple_rpc.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
