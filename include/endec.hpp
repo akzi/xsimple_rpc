@@ -32,11 +32,20 @@ namespace endec
 	{
 		using type = typename std::remove_reference<typename std::remove_const<T>::type>::type;
 	};
+
+
 	template <typename T>
 	inline typename std::enable_if<std::is_arithmetic<T>::value, std::size_t>::type
 		get_sizeof(T)
 	{
 		return sizeof(T);
+	}
+
+	template <typename T>
+	inline typename std::enable_if<std::is_member_function_pointer<decltype(&T::bytes)>::value, std::size_t>::type
+		get_sizeof(const T& value)
+	{
+		return value.bytes();
 	}
 
 	template<typename C, typename T = C::value_type>
@@ -60,6 +69,22 @@ namespace endec
 	inline std::size_t get_sizeof(const std::tuple<Args...> &tp)
 	{
 		return get_sizeof(tp, std::make_index_sequence<sizeof...(Args)>());
+	}
+
+	template<typename T>
+	inline typename std::enable_if<std::is_member_function_pointer<decltype(&T::decode)>::value, T>::type
+		get(uint8_t *&ptr)
+	{
+		T value;
+		value.decode(ptr);
+		return std::move(value);
+	}
+
+	template<typename T>
+	inline typename std::enable_if<std::is_member_function_pointer<decltype(&T::encode)>::value, void>::type
+		put(uint8_t *&ptr, const T &value)
+	{
+		value.encode(ptr);
 	}
 
 	//bool 
@@ -280,16 +305,14 @@ namespace endec
 	}
 
 	template<typename C, typename T = typename C::value_type>
-	inline typename std::enable_if<std::is_same<std::vector<T>, C>::value && !is_string<T>::value, std::vector<T>>::type
+	inline typename std::enable_if<!is_string<C>::value, C>::type
 	 get(uint8_t *&ptr)
 	{
-		std::vector<T> vec;
+		C c;
 		auto size = get<uint32_t>(ptr);
 		for (uint32_t i = 0; i < size; ++i)
-		{
-			vec.emplace_back(get<T>(ptr));
-		}
-		return std::move(vec);
+			c.emplace_back(get<T>(ptr));
+		return std::move(c);
 	}
 
 	template<typename Last>
@@ -351,16 +374,6 @@ namespace endec
 		auto value = get_tp_helper<Args...>(ptr);
 		if (end != ptr)
 			throw std::runtime_error("get_tp error");
-		return std::move(value);
-	}
-
-
-	template<typename T>
-	inline std::enable_if<std::is_member_function_pointer<decltype(&T::decode)>::value, T>
-		get(uint8_t *&ptr)
-	{
-		T value;
-		value.decode(ptr);
 		return std::move(value);
 	}
 }

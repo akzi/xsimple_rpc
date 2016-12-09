@@ -28,7 +28,7 @@ namespace xsimple_rpc
 	{
 	public:
 		template<typename Proto, typename ...Args>
-		auto rpc_call(Args && ...args)
+		auto rpc_call(Args ...args)
 		{
 			return rpc_call_impl(xutil::function_traits<typename Proto::func_type>(), Proto::rpc_name, std::forward<Args>(args)...);
 		}
@@ -48,7 +48,8 @@ namespace xsimple_rpc
 			endec::put(ptr, rpc_name);
 			endec::put(ptr, std::move(tp));
 
-			return endec::get<Ret>(ptr);
+			uint8_t*beg= (uint8_t*)buffer.data();
+			auto res = endec::get<Ret>(beg, ptr);
 		}
 
 		template<typename ...Args>
@@ -63,6 +64,10 @@ namespace xsimple_rpc
 			uint8_t*ptr = (uint8_t*)buffer.data();
 			endec::put(ptr, rpc_name);
 			endec::put(ptr, std::move(tp));
+
+			uint8_t*beg = (uint8_t*)buffer.data();
+			auto func_name = endec::get<std::string>(beg);
+			auto res = endec::get<typename std::remove_reference<typename std::remove_const<Args>::type>::type...>(beg, ptr);
 		}
 	};
 }
