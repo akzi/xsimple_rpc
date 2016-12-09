@@ -3,7 +3,14 @@
 #include <string>
 #include <vector>
 
-namespace detail
+#define DEFINE_RPC_PROTO(name, proto)\
+struct name\
+{\
+	using func_type = proto ;\
+	static constexpr char *rpc_name = #name;\
+};
+
+namespace endec
 {
 	template <typename>
 	struct _Is_string :std::false_type
@@ -20,6 +27,11 @@ namespace detail
 
 	};
 
+	template<typename T>
+	struct remove_const_ref
+	{
+		using type = typename std::remove_reference<typename std::remove_const<T>::type>::type;
+	};
 	template <typename T>
 	inline typename std::enable_if<std::is_arithmetic<T>::value, std::size_t>::type
 		get_sizeof(T)
@@ -27,20 +39,29 @@ namespace detail
 		return sizeof(T);
 	}
 
-	template <typename T>
-	inline typename std::enable_if<std::is_same<std::string, T>::value, std::size_t>::type
-		get_sizeof(const T &t)
-	{
-		return sizeof(uint32_t) + t.size();
-	}
-
 	template<typename C, typename T = C::value_type>
-	inline typename std::enable_if<!is_string<C>::value, std::size_t>::type
-		get_sizeof(const C &c)
+	inline std::size_t get_sizeof(const C &c)
 	{
 		return sizeof(uint32_t) + c.size() * get_sizeof(typename T());
 	}
 	
+	template<typename First, typename ...Rest>
+	inline std::size_t get_sizeof(const First &first, const Rest &...rest)
+	{
+		return get_sizeof(first) + get_sizeof(rest...);
+	}
+
+	template<typename ...Args, std::size_t ...Indexes>
+	inline std::size_t get_sizeof(const std::tuple<Args...> &tp, std::index_sequence<Indexes...>)
+	{
+		return get_sizeof(std::get<Indexes>(tp)...);
+	}
+	template<typename ...Args>
+	inline std::size_t get_sizeof(const std::tuple<Args...> &tp)
+	{
+		return get_sizeof(tp, std::make_index_sequence<sizeof...(Args)>());
+	}
+
 	//bool 
 	template<typename T>
 	inline typename std::enable_if<std::is_same<T, bool>::value, T>::type
@@ -52,7 +73,7 @@ namespace detail
 	}
 	template<typename T>
 	inline typename std::enable_if<std::is_same<T, bool>::value, void>::type
-		put(unsigned char *&ptr, bool value)
+		put(unsigned char *&ptr, T value)
 	{
 		*ptr = value ? 1 : 0;
 		ptr += sizeof(char);
@@ -291,45 +312,55 @@ namespace detail
 	}
 
 	template<typename ... Args>
-	void put_tp(uint8_t *&ptr, std::tuple<Args...>& tup)
+	void put(uint8_t *&ptr, std::tuple<Args...>& tup)
 	{
 		put_tp_helper(ptr, std::make_index_sequence<std::tuple_size<decltype(tup)>::value>(), std::tuple<Args...>(tup));
 	}
 
 	template<typename ... Args>
-	void put_tp(uint8_t *&ptr, std::tuple<Args...>&& tup)
+	void put(uint8_t *&ptr, std::tuple<Args...>&& tup)
 	{
 		using tuple_type = std::tuple<Args...>;
-		put_tp_helper(ptr, std::make_index_sequence<4>(), std::forward<tuple_type>(tup));
+		put_tp_helper(ptr, std::make_index_sequence<sizeof...(Args)>(), std::forward<tuple_type>(tup));
 	}
-}
 
-
-
-class endec
-{
-public:
-	endec()
+	//
+	template<typename Last>
+	std::tuple<Last> get_tp_impl(uint8_t *&ptr, std::index_sequence<0>)
 	{
-
+		using value_type = typename std::remove_reference<typename std::remove_const<Last>::type>::type;
+		return std::forward_as_tuple(get<value_type>(ptr));
 	}
-	endec(const std::string &string)
-	{
 
-	}
-	endec(std::string &&string)
+	template<typename First, typename ... Rest, std::size_t ... Tndexes>
+	std::tuple<First, Rest...> get_tp_impl(uint8_t *&ptr, std::index_sequence<Tndexes...>)
 	{
+		using value_type = typename std::remove_reference<typename std::remove_const<First>::type>::type;
+		return std::tuple_cat(std::forward_as_tuple(get<value_type>(ptr)), get_tp_impl<Rest...>(ptr, std::make_index_sequence<sizeof ...(Rest)>()));
+	}
 
-	}
-	template<typename T, class = decltype(&T::decode)>
-	T get()
+	template<typename ...Args>
+	std::tuple<Args...> get_tp_helper(uint8_t *&ptr)
 	{
-		T value;
-		value.decode(ptr_);
+		return get_tp_impl<Args...>(ptr, std::make_index_sequence<sizeof ...(Args)>());
+	}
+
+	template<typename ...Args>
+	std::tuple<Args...> get(uint8_t *&ptr, uint8_t *& end)
+	{
+		auto value = get_tp_helper<Args...>(ptr);
+		if (end != ptr)
+			throw std::runtime_error("get_tp error");
 		return std::move(value);
 	}
-	 
-private:
-	uint8_t *ptr_;
-	std::string buffer_;
-};
+
+
+	template<typename T>
+	inline std::enable_if<std::is_member_function_pointer<decltype(&T::decode)>::value, T>
+		get(uint8_t *&ptr)
+	{
+		T value;
+		value.decode(ptr);
+		return std::move(value);
+	}
+}

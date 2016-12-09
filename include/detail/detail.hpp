@@ -3,6 +3,8 @@
 #include <memory>
 #include <map>
 #include <vector>
+#include <utility>
+#include <tuple>
 
 //deps
 #include "../../../xnet/include/xnet.hpp"
