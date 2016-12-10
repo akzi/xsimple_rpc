@@ -42,9 +42,9 @@ XTEST_SUITE(endnc)
 {
 	XUNIT_TEST(rpc_call_impl)
 	{
-		/*MyStruct obj, ob2;
+		MyStruct obj, ob2;
 		obj.hello = "hello";
-		obj.world = 192982772; 20 + 4 + 4+ 4;
+		obj.world = 192982772; 20 + 4 + 4 + 4;
 		obj.ints = { 1,2,3,4,5 };
 		std::string buffer_;
 		buffer_.resize(obj.bytes());
@@ -55,7 +55,7 @@ XTEST_SUITE(endnc)
 
 		xassert(ob2.hello == obj.hello);
 		xassert(ob2.world == obj.world);
-		xassert(ob2.ints == obj.ints);*/
+		xassert(ob2.ints == obj.ints);
 	}
 	XUNIT_TEST(decode)
 	{

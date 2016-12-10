@@ -2,12 +2,44 @@
 #include "detail/detail.hpp"
 namespace xsimple_rpc
 {
+	static const std::string magic_code = "xsimple_rpc";
+
+	struct rpc_cancel: std::exception
+	{
+		virtual char const* what() const override 
+		{ return "rpc_cancel_error"; }
+	};
+	struct rpc_error: std::exception
+	{
+		rpc_error(std::string error_code)
+			:error_code_(error_code)
+		{
+		}
+		virtual char const* what() const override
+		{
+			return error_code_.c_str();
+		}
+		std::string error_code_;
+	};
 	class client
 	{
-	public:
+	private:
 		using get_response = std::function<std::string()>;
 		using cancel_get_response = std::function<void()>;
-
+		using send_rpc_result = std::pair <get_response, cancel_get_response>;
+		friend class rpc_engine;
+	public:
+		client()
+		{
+		}
+		client(client &&other)
+		{
+			move_reset(std::move(other));
+		}
+		client &operator=(client && other)
+		{
+			move_reset(std::move(other));
+		}
 		template<typename Proto, typename ...Args>
 		auto rpc_call(Args ...args)
 		{
@@ -16,7 +48,16 @@ namespace xsimple_rpc
 				std::forward<Args>(args)...);
 		}
 	private:
-		friend class rpc_engine;
+		
+		void move_reset(client &&other)
+		{
+			if (&other == this)
+				return;
+			std::lock_guard <std::mutex> locker(other.mutex_);
+			send_req = std::move(other.send_req);
+			close_rpc_ = std::move(other.close_rpc_);
+		}
+		
 		template<typename Ret, typename ...Args>
 		Ret rpc_call_impl(
 			const xutil::function_traits<Ret(Args...)>&,
@@ -25,10 +66,10 @@ namespace xsimple_rpc
 		{
 			auto req_id = gen_req_id();
 			auto buffer = make_req(rpc_name, req_id, std::forward_as_tuple(args...));
-			if (!send_rpc_)
+			if (!send_req)
 				throw std::logic_error("client isn't connected");
 
-			auto result = send_rpc_(std::move(buffer), req_id);
+			auto result = send_req(std::move(buffer), req_id);
 			set_cancel_get_response(std::move(result.second));
 			auto resp = result.first();
 
@@ -51,7 +92,7 @@ namespace xsimple_rpc
 		{
 			auto req_id = gen_req_id();
 			auto buffer = make_req(rpc_name, req_id, std::forward_as_tuple(args...));
-			auto get_resp = send_rpc_(std::move(buffer), req_id);
+			auto get_resp = send_req(std::move(buffer), req_id);
 			set_cancel_get_response(std::move(get_resp.second));
 			get_resp.first();
 			reset_cancel_get_response();
@@ -65,9 +106,9 @@ namespace xsimple_rpc
 		template<typename ...Args>
 		std::string make_req(const std::string &rpc_name, int64_t req_id, std::tuple<Args...> &&tp)
 		{
-			static const std::string magic_code = "xsimple_rpc";
 			std::string buffer;
 			uint32_t buffer_size = uint32_t(
+				endec::get_sizeof(req_id)+
 				endec::get_sizeof(tp) +
 				endec::get_sizeof(rpc_name) +
 				endec::get_sizeof(magic_code) +
@@ -93,91 +134,192 @@ namespace xsimple_rpc
 			cancel_get_response_ = std::move(handle);
 		}
 		std::mutex mutex_;
-		using send_rpc_result = std::pair <get_response,cancel_get_response>;
-		std::function<send_rpc_result(std::string &&, int64_t)> send_rpc_;
 		cancel_get_response cancel_get_response_;
+		std::function<send_rpc_result(std::string &&, int64_t)> send_req;
+		std::function<void()> close_rpc_;
 	};
 	
+	struct rpc_req
+	{
+		enum class status
+		{
+			e_ok,
+			e_cancel,
+			e_rpc_error,
+		};
+		status status_ = status::e_ok;
+		int64_t req_id_;
+		std::string result_;
+		std::string req_buffer_;
+	};
+
+	struct rpc_session
+	{
+		
+		void push_rpc_req(std::shared_ptr<rpc_req> & rpc_req)
+		{
+			std::lock_guard<std::mutex> locker(mtx_);
+			req_item_list_.push_back(rpc_req);
+		}
+
+		void do_send_rpc()
+		{
+			std::lock_guard<std::mutex> locker(mtx_);
+			if (is_send_ || req_item_list_.empty())
+				return;
+			is_send_ = true;
+			auto item = req_item_list_.front();
+			conn_.async_send(std::move(item->req_buffer_));
+			wait_rpc_resp_list_.emplace_back(std::move(item));
+			req_item_list_.pop_front();
+		}
+
+		void init_conn()
+		{
+			conn_.regist_send_callback([this](std::size_t len) {
+
+				if (len == 0)
+				{
+					close();
+					conn_.close();
+					return;
+				}
+				is_send_ = false;
+				do_send_rpc();
+			});
+			conn_.regist_recv_callback([this](char *data, std::size_t len) {
+			
+				if (len == 0 || recv_data_callback(data, len) == false)
+				{
+					close();
+					conn_.close();
+					return;
+				}
+			});
+		}
+		bool recv_data_callback(char *data, std::size_t len)
+		{
+			uint8_t *ptr = reinterpret_cast<uint8_t*>(data);
+			if (msg_len_ == 0 && len == sizeof(msg_len_))
+			{
+				msg_len_ = endec::get<uint32_t>(ptr);
+				static std::size_t min_msg_len = 
+					endec::get_sizeof(std::string("heartbeat")) +
+					endec::get_sizeof(magic_code) +
+					endec::get_sizeof(uint32_t()) +
+					endec::get_sizeof(uint64_t());
+				if (msg_len_ < min_msg_len)
+				{
+					std::cout << "msg error" << std::endl;
+					return false;
+				}
+				conn_.async_recv((std::size_t)msg_len_);
+				msg_len_ = 0;
+				return true;
+			}
+
+			auto magic_code = endec::get<std::string>(ptr);
+			auto req_id = endec::get<int64_t>(ptr);
+			auto rpc_name = endec::get<std::string>(ptr);
+			if (req_id == 0)
+			{
+				heartbeat_callback();
+				return true;
+			}
+			auto item = wait_rpc_resp_list_.front();
+			wait_rpc_resp_list_.pop_front();
+			if (item->req_id_ != req_id)
+				return false;
+			conn_.async_recv(sizeof(uint32_t));
+			item->result_ = endec::get<std::string>(ptr);
+			cv_.notify_one();
+		}
+		void heartbeat_callback()
+		{
+
+		}
+		void close()
+		{
+			is_close_ = true;
+		}
+		uint32_t msg_len_ = 0;
+		bool is_close_ = false;
+		bool is_send_ = false;
+		std::string last_error_code_;
+		std::mutex mtx_;
+		std::condition_variable cv_;
+		xnet::connection conn_;
+		std::unique_ptr<xnet::msgbox<std::function<void()>>> msgbox_;
+		std::list<std::shared_ptr<rpc_req>> req_item_list_;
+		std::list<std::shared_ptr<rpc_req>> wait_rpc_resp_list_;
+	};
+
 	class rpc_engine
 	{
-	private:
-		struct connect_req
-		{
-			std::mutex mutex_;
-			std::condition_variable cv_;
-			xnet::connection conn_;
-			std::string error_code_;
-		};
-		struct rpc_req
-		{
-			enum class status
-			{
-				e_ok,
-				e_cancel,
-				e_rpc_error,
-			};
-			status status_ = status::e_ok;
-			int64_t req_id_;
-			std::string result_;
-			std::string req_buffer_;
-		};
-		struct rpc_session
-		{
-			std::mutex mtx_;
-			std::condition_variable cv_;
-			xnet::connection conn_;
-			xnet::msgbox<std::shared_ptr<rpc_req>> msgbox_;
-			std::list<std::string> send_buffer_list_;
-			std::list<std::shared_ptr<rpc_req>> req_item_list_;
-		};
-	public:
-		using get_response = std::function<std::string()>;
-		using cancel_get_response = std::function<void()>;
+	public:		
 		rpc_engine(std::size_t threadsize_)
 		{
 			proactor_pool_.set_size(threadsize_);
 			init();
 		}
-		client connect(const std::string &ip, int port)
+		client connect(const std::string &ip, int port, int timeout_millis)
 		{
-			auto connect_req_ptr = std::make_shared<connect_req>();
-			std::weak_ptr<connect_req> connect_req_wptr = connect_req_ptr;
 			auto session = std::make_shared<rpc_session>();
-			send_msg([ip, port, connect_req_wptr, this] {
+			std::weak_ptr<rpc_session> session_wptr;
+			send_msg([ip, port, session_wptr, this] {
 				std::lock_guard<std::mutex> locker(connectors_mutex_);
 				auto connector = proactor_pool_.get_current_proactor().get_connector();
 				auto index = connector_index_++;
-				connector.bind_fail_callback([index, connect_req_wptr](std::string errorc_code)
+				connector.bind_fail_callback([index, session_wptr](std::string errorc_code)
 				{
-					auto ptr = connect_req_wptr.lock();
-					ptr->error_code_ = errorc_code;
+					auto ptr = session_wptr.lock();
+					if (!ptr)
+						return;
+					std::unique_lock<std::mutex> locker(ptr->mtx_);
+					ptr->last_error_code_ = errorc_code;
 					ptr->cv_.notify_one();
 				})
-				.bind_success_callback([index, connect_req_wptr](xnet::connection &&conn)
+				.bind_success_callback([this, index, session_wptr](xnet::connection &&conn)
 				{
-					auto ptr = connect_req_wptr.lock();
+					auto ptr = session_wptr.lock();
+					if (!ptr) 
+						return;
+					std::unique_lock<std::mutex> locker(ptr->mtx_);
 					ptr->conn_ = std::move(conn);
 					ptr->cv_.notify_one();
+					ptr->msgbox_.reset(new xnet::msgbox<std::function<void()>>(
+						proactor_pool_.get_current_proactor()));
 				});
 				connector.async_connect(ip, port);
 				connectors_.emplace(index, std::move(connector));
 			});
-			std::unique_lock<std::mutex> locker(connect_req_ptr->mutex_);
-			connect_req_ptr->cv_.wait(locker, [&connect_req_ptr] {
-				return connect_req_ptr->error_code_.size() || 
-					connect_req_ptr->conn_.valid();
+			std::unique_lock<std::mutex> locker(session->mtx_);
+			auto res = session->cv_.wait_for(locker, 
+				std::chrono::milliseconds(timeout_millis),[&session] {
+				return session->last_error_code_.size() || session->conn_.valid();
 			});
-			if (connect_req_ptr->error_code_.size())
-				throw std::runtime_error("connect error: "+ connect_req_ptr->error_code_);
-			
+			if (!res)
+				throw std::exception("connect_timeout");
+
+			if (session->last_error_code_.size())
+				throw std::runtime_error("connect error: " + session->last_error_code_);
+
+			auto session_id = add_session(session);
 			client _client;
-			_client.send_rpc_ = [this](std::string &&buffer, int64_t req_id){
-				return send_rpc(0,buffer, req_id);
+			_client.send_req = [this, session_id](std::string &&buffer, int64_t req_id){
+				return do_rpc_call(session_id,std::move(buffer), req_id);
 			};
+			_client.close_rpc_ = [session_id, this, session] {
+				session->msgbox_->send([this, session_id]{
+					del_session(session_id);
+				});
+			};
+			return std::move(_client);
 		}
 	private:
 		using msgbox = xnet::msgbox<std::function<void()>>;
-
+		using get_response = std::function<std::string()>;
+		using cancel_get_response = std::function<void()>;
 		template<typename T>
 		void send_msg(T &&item)
 		{
@@ -186,39 +328,45 @@ namespace xsimple_rpc
 			++msgboxs_index_;
 		}
 		std::pair<get_response, cancel_get_response>
-			send_rpc(int64_t session_id, std::string &buffer, int64_t req_id)
+			do_rpc_call(int64_t session_id, std::string &&buffer, int64_t req_id)
 		{
 			auto item = std::make_shared<rpc_req>();
 			item->req_buffer_ = std::move(buffer);
 			item->req_id_ = req_id;
 
-			std::lock_guard<std::mutex> locker(mutex_);
+			std::lock_guard<std::mutex> locker(session_mutex_);
 			auto itr = rpc_sessions_.find(session_id);
 			if (itr == rpc_sessions_.end())
 				throw std::runtime_error("can't find rpc_session");
 			auto msg = item;
 			auto session = itr->second;
-			session->msgbox_.send(std::move(msg));
+			session->push_rpc_req(item);
 
 			return{ [session, item] {
 				std::unique_lock<std::mutex> locker(session->mtx_);
 				session->cv_.wait(locker);
-				if (item->status_ != rpc_req::status::e_ok)
-					throw std::logic_error(
-						item->status_ == rpc_req::status::e_cancel ? 
-						"rpc call cancel":
-						"rpc call error");
+				if (item->status_ == rpc_req::status::e_cancel)
+					throw rpc_cancel();
+				else if (item->status_ == rpc_req::status::e_rpc_error)
+					throw rpc_error(item->result_);
 				return item->result_;
-			},[item] {
+			},[session, item] {
 				item->status_ = rpc_req::status::e_cancel;
-				item->cv_.notify_one();
+				session->cv_.notify_one();
 			} };
+		}
+		void do_rpc_call_impl(std::weak_ptr<rpc_session> session_wptr)
+		{
+			auto session = session_wptr.lock();
+			if (!session)
+				return;
+			session->do_send_rpc();
 		}
 		void init()
 		{
 			msgboxs_.reserve(proactor_pool_.get_size());
 			proactor_pool_.regist_run_before([this] {
-				std::lock_guard<std::mutex> locker(mutex_);
+				std::lock_guard<std::mutex> locker(session_mutex_);
 				auto &pro = proactor_pool_.get_current_proactor();
 				msgboxs_.emplace_back(new msgbox(pro));
 				auto &msgbox = msgboxs_.back();
@@ -233,7 +381,20 @@ namespace xsimple_rpc
 				});
 			}).start();
 		}
-		std::mutex mutex_;
+		void del_session(int64_t session_id)
+		{
+			std::lock_guard<std::mutex> locker(session_mutex_);
+			rpc_sessions_.erase(rpc_sessions_.find(session_id));
+		}
+		int64_t add_session(std::shared_ptr<rpc_session> &session)
+		{
+			std::lock_guard<std::mutex> locker(session_mutex_);
+			++session_id_;
+			rpc_sessions_.emplace(session_id_, session);
+			return session_id_;
+		}
+		std::mutex session_mutex_;
+		int64_t session_id_ = 1;
 		std::map<int64_t, std::shared_ptr<rpc_session>> rpc_sessions_;
 
 		std::mutex msgboxs_mutex_;
