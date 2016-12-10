@@ -2,6 +2,7 @@
 #include <type_traits>
 #include <string>
 #include <vector>
+#include <list>
 
 #define DEFINE_RPC_PROTO(name, proto)\
 struct name\
@@ -48,8 +49,8 @@ namespace endec
 		return value.bytes();
 	}
 
-	template<typename C, typename T = C::value_type>
-	inline std::size_t get_sizeof(const C &c)
+	template<typename Container, typename T = Container::value_type>
+	inline std::size_t get_sizeof(const Container &c)
 	{
 		return sizeof(uint32_t) + c.size() * get_sizeof(typename T());
 	}
@@ -293,55 +294,60 @@ namespace endec
 		ptr += value.size();
 	}
 
-	template<typename T>
-	inline typename std::enable_if < 
-		std::is_arithmetic<T>::value || 
-		std::is_same<T, std::string>::value , void > ::type
-		put(uint8_t *& ptr, const std::vector<T> & vec)
+	template<typename Container, typename value_type = typename Container::value_type>
+	inline typename std::enable_if<!is_string<Container>::value, void>::type
+		put(uint8_t *& ptr, const Container &container)
 	{
-		put(ptr, (uint32_t)vec.size());
-		for (auto &itr : vec)
-			put<T>(ptr, itr);
+		put(ptr, (uint32_t)container.size());
+		for (auto &itr : container)
+			put<value_type>(ptr, itr);
 	}
 
-	template<typename C, typename T = typename C::value_type>
-	inline typename std::enable_if<!is_string<C>::value, C>::type
-	 get(uint8_t *&ptr)
+	template<typename Container, typename value_type = typename Container::value_type>
+	inline typename std::enable_if<!is_string<Container>::value &&
+		std::is_member_function_pointer<decltype(&Container::emplace_back<value_type>)>::value, Container>::type
+		get(uint8_t *&ptr)
 	{
-		C c;
+		Container container;
 		auto size = get<uint32_t>(ptr);
 		for (uint32_t i = 0; i < size; ++i)
-			c.emplace_back(get<T>(ptr));
-		return std::move(c);
+			container.emplace_back(get<value_type>(ptr));
+		return std::move(container);
 	}
 
 	template<typename Last>
-	void put_tp_impl(uint8_t *&ptr, Last&& last)
+	inline void put_tp_impl(uint8_t *&ptr, Last&& last)
 	{
 		put(ptr, last);
 	}
 
 	template<typename First, typename ... Rest>
-	void put_tp_impl(uint8_t *&ptr, First&& first, Rest&&...rest)
+	inline void put_tp_impl(uint8_t *&ptr, First&& first, Rest&&...rest)
 	{
 		put(ptr, first);
 		put_tp_impl(ptr, std::forward<Rest>(rest)...);
 	}
 
 	template<std::size_t ... Tndexes, typename ... Args>
-	void put_tp_helper(uint8_t *&ptr, std::index_sequence<Tndexes...>, std::tuple<Args...>&& tup)
+	inline void put_tp_helper(uint8_t *&ptr, std::index_sequence<Tndexes...>, std::tuple<Args...>&& tup)
 	{
 		put_tp_impl(ptr, std::forward<Args>(std::get<Tndexes>(tup))...);
 	}
 
-	template<typename ... Args>
-	void put(uint8_t *&ptr, std::tuple<Args...>& tup)
+	template<std::size_t ... Tndexes, typename ... Args>
+	inline void put_tp_helper(uint8_t *&ptr, std::index_sequence<Tndexes...>, std::tuple<Args...>& tup)
 	{
-		put_tp_helper(ptr, std::make_index_sequence<std::tuple_size<decltype(tup)>::value>(), std::tuple<Args...>(tup));
+		put_tp_impl(ptr, std::forward<Args>(std::get<Tndexes>(tup))...);
+	}
+	
+	template<typename ... Args>
+	inline void put(uint8_t *&ptr, std::tuple<Args...>& tup)
+	{
+		put_tp_helper(ptr, std::make_index_sequence<sizeof...(Args)>(), tup);
 	}
 
 	template<typename ... Args>
-	void put(uint8_t *&ptr, std::tuple<Args...>&& tup)
+	inline void put(uint8_t *&ptr, std::tuple<Args...>&& tup)
 	{
 		using tuple_type = std::tuple<Args...>;
 		put_tp_helper(ptr, std::make_index_sequence<sizeof...(Args)>(), std::forward<tuple_type>(tup));
@@ -349,31 +355,29 @@ namespace endec
 
 	//
 	template<typename Last>
-	std::tuple<Last> get_tp_impl(uint8_t *&ptr, std::index_sequence<0>)
+	inline std::tuple<Last> get_tp_impl(uint8_t *&ptr, std::index_sequence<0>)
 	{
 		using value_type = typename std::remove_reference<typename std::remove_const<Last>::type>::type;
 		return std::forward_as_tuple(get<value_type>(ptr));
 	}
 
 	template<typename First, typename ... Rest, std::size_t ... Tndexes>
-	std::tuple<First, Rest...> get_tp_impl(uint8_t *&ptr, std::index_sequence<Tndexes...>)
+	inline std::tuple<First, Rest...> get_tp_impl(uint8_t *&ptr, std::index_sequence<Tndexes...>)
 	{
 		using value_type = typename std::remove_reference<typename std::remove_const<First>::type>::type;
 		return std::tuple_cat(std::forward_as_tuple(get<value_type>(ptr)), get_tp_impl<Rest...>(ptr, std::make_index_sequence<sizeof ...(Rest)>()));
 	}
 
 	template<typename ...Args>
-	std::tuple<Args...> get_tp_helper(uint8_t *&ptr)
+	inline std::tuple<Args...> get_tp_helper(uint8_t *&ptr)
 	{
 		return get_tp_impl<Args...>(ptr, std::make_index_sequence<sizeof ...(Args)>());
 	}
 
-	template<typename ...Args>
-	std::tuple<Args...> get(uint8_t *&ptr, uint8_t *& end)
+	template<typename Tuple, typename First = typename std::tuple_element<0, Tuple>::type>
+	inline typename std::enable_if<1, Tuple>::type
+		get(uint8_t *&ptr)
 	{
-		auto value = get_tp_helper<Args...>(ptr);
-		if (end != ptr)
-			throw std::runtime_error("get_tp error");
-		return std::move(value);
+		return get_tp_helper<Tuple>(ptr);
 	}
 }
