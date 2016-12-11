@@ -5,18 +5,21 @@ namespace xsimple_rpc
 	class rpc_engine
 	{
 	public:
-		rpc_engine(std::size_t threadsize_ = std::thread::hardware_concurrency())
+		rpc_engine(std::size_t io_thread_size_ = std::thread::hardware_concurrency())
+			:proactor_pool_(io_thread_size_)
 		{
-			proactor_pool_.set_size(threadsize_);
-			init();
+			
 		}
-		client connect(const std::string &ip, int port, int timeout_millis)
+		~rpc_engine()
+		{
+			proactor_pool_.stop();
+		}
+		client connect(const std::string &ip, int port, int64_t timeout_millis = 0)
 		{
 			auto session = std::make_shared<rpc_session>();
-			std::weak_ptr<rpc_session> session_wptr;
-
-			auto msgbox = get_msgbox();
-			auto item = [ip, port, session_wptr, this, msgbox]
+			std::weak_ptr<rpc_session> session_wptr = session;
+			auto msgbox_index = msgboxs_index_.fetch_add(1) % proactor_pool_.get_size();
+			auto item = [ip, port, session_wptr, this, msgbox_index]
 			{
 				std::lock_guard<std::mutex> locker(connectors_mutex_);
 				auto connector = proactor_pool_.get_current_proactor().get_connector();
@@ -24,7 +27,7 @@ namespace xsimple_rpc
 				auto index = connector_index_;
 				connector.bind_fail_callback([this, index, session_wptr](std::string errorc_code)
 				{
-					xnet::guard<std::function<void()>> guard([this, index] {del_connector(index); });
+					xnet::guard guard([this, index] {del_connector(index); });
 					auto ptr = session_wptr.lock();
 					if (!ptr)
 						return;
@@ -32,29 +35,38 @@ namespace xsimple_rpc
 					ptr->last_error_code_ = errorc_code;
 					ptr->cv_.notify_one();
 				}); 
-				connector.bind_success_callback([this, index, session_wptr, msgbox](xnet::connection &&conn)
+				connector.bind_success_callback([this, index, session_wptr, msgbox_index](xnet::connection &&conn)
 				{
-					xnet::guard<std::function<void()>> guard([this, index] {del_connector(index); });
+					xnet::guard guard([this, index] {del_connector(index); });
 					auto ptr = session_wptr.lock();
 					if (!ptr)
 						return;
 					std::unique_lock<std::mutex> locker(ptr->mtx_);
 					ptr->conn_ = std::move(conn);
+					ptr->init_conn();
+					ptr->msgbox_index_ = msgbox_index;
 					ptr->cv_.notify_one();
-					ptr->msgbox_ = msgbox;
-
 				});
 				connector.async_connect(ip, port);
 				connectors_.emplace(index, std::move(connector));
 			};
-			msgbox->send(std::move(item));
+			proactor_pool_.post(std::move(item), msgbox_index);
 			std::unique_lock<std::mutex> locker(session->mtx_);
-			auto res = session->cv_.wait_for(locker,
-				std::chrono::milliseconds(timeout_millis), [&session] {
-				return session->last_error_code_.size() || session->conn_.valid();
-			});
-			if (!res)
-				throw std::exception("connect_timeout");
+			if (timeout_millis > 0)
+			{
+				auto res = session->cv_.wait_for(locker,
+					std::chrono::milliseconds(timeout_millis), [&session] {
+					return session->last_error_code_.size() || session->conn_.valid();
+				});
+				if (!res)
+					throw std::exception("connect_timeout");
+			}
+			else
+			{
+				session->cv_.wait(locker,[&session] {
+					return session->last_error_code_.size() || session->conn_.valid();
+				});
+			}
 
 			if (session->last_error_code_.size())
 				throw std::runtime_error("connect error: " + session->last_error_code_);
@@ -64,10 +76,10 @@ namespace xsimple_rpc
 			_client.send_req = [this, session_id](std::string &&buffer, int64_t req_id) {
 				return do_rpc_call(session_id, std::move(buffer), req_id);
 			};
-			_client.close_rpc_ = [session_id, this, session] {
-				session->msgbox_->send([this, session_id] {
+			_client.close_rpc_ = [session_id, this, msgbox_index] {
+				proactor_pool_.post([this, session_id] {
 					del_session(session_id);
-				});
+				}, msgbox_index);
 			};
 			return std::move(_client);
 		}
@@ -75,18 +87,15 @@ namespace xsimple_rpc
 		{
 			return proactor_pool_;
 		}
+		void start()
+		{
+			proactor_pool_.start();
+		}
 	private:
 		using msgbox_t = xnet::msgbox<std::function<void()>>;
 		using get_response = std::function<std::string()>;
 		using cancel_get_response = std::function<void()>;
 
-		std::shared_ptr<msgbox_t> get_msgbox()
-		{
-			std::lock_guard<std::mutex> locker(msgboxs_mutex_);
-			auto msgbox = msgboxs_[msgboxs_index_% msgboxs_.size()];
-			++msgboxs_index_;
-			return msgbox;
-		}
 		std::pair<get_response, cancel_get_response>
 			do_rpc_call(int64_t session_id, std::string &&buffer, int64_t req_id)
 		{
@@ -100,8 +109,9 @@ namespace xsimple_rpc
 				throw std::runtime_error("can't find rpc_session");
 			auto msg = item;
 			auto session = itr->second;
+			auto index = session->msgbox_index_;
 			session->push_rpc_req(item);
-			session->msgbox_->send([session] { session->do_send_rpc(); });
+			proactor_pool_.post([session] { session->do_send_rpc();}, index);
 
 			return{ [session, item] {
 				std::unique_lock<std::mutex> locker(session->mtx_);
@@ -116,25 +126,7 @@ namespace xsimple_rpc
 				session->cv_.notify_one();
 			} };
 		}
-		void init()
-		{
-			msgboxs_.reserve(proactor_pool_.get_size());
-			proactor_pool_.regist_run_before([this] {
-				std::lock_guard<std::mutex> locker(session_mutex_);
-				auto &pro = proactor_pool_.get_current_proactor();
-				msgboxs_.emplace_back(new msgbox_t(pro));
-				auto &msgbox = msgboxs_.back();
-				msgbox->regist_notify([&pro, &msgbox] {
-					do
-					{
-						auto item = msgbox->recv();
-						if (!item.first)
-							return;
-						item.second();
-					} while (true);
-				});
-			}).start();
-		}
+
 		void del_session(int64_t session_id)
 		{
 			std::lock_guard<std::mutex> locker(session_mutex_);
@@ -164,9 +156,7 @@ namespace xsimple_rpc
 		int64_t session_id_ = 1;
 		std::map<int64_t, std::shared_ptr<rpc_session>> rpc_sessions_;
 
-		std::mutex msgboxs_mutex_;
-		std::size_t msgboxs_index_ = 0;
-		std::vector<std::shared_ptr<msgbox_t>> msgboxs_;
+		std::atomic_uint64_t msgboxs_index_ = 0;
 
 		std::mutex connectors_mutex_;
 		int64_t connector_index_ = 0;

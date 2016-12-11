@@ -9,9 +9,7 @@ namespace xsimple_rpc
 		using send_rpc_result = std::pair <get_response, cancel_get_response>;
 		friend class rpc_engine;
 	public:
-		client()
-		{
-		}
+		
 		client(client &&other)
 		{
 			move_reset(std::move(other));
@@ -33,7 +31,9 @@ namespace xsimple_rpc
 				std::forward<Args>(args)...);
 		}
 	private:
-
+		client()
+		{
+		}
 		void move_reset(client &&other)
 		{
 			if (&other == this)
@@ -49,6 +49,7 @@ namespace xsimple_rpc
 			const std::string &rpc_name,
 			typename std::remove_reference<typename std::remove_const<Args>::type>::type&& ...args)
 		{
+			using detail::make_req;
 			auto req_id = gen_req_id();
 			auto buffer = make_req(rpc_name, req_id, std::forward_as_tuple(args...));
 			if (!send_req)
@@ -75,6 +76,7 @@ namespace xsimple_rpc
 			const std::string &rpc_name,
 			typename std::remove_reference<typename std::remove_const<Args>::type>::type&& ...args)
 		{
+			using detail::make_req;
 			auto req_id = gen_req_id();
 			auto buffer = make_req(rpc_name, req_id, std::forward_as_tuple(args...));
 			auto get_resp = send_req(std::move(buffer), req_id);
@@ -83,33 +85,10 @@ namespace xsimple_rpc
 			reset_cancel_get_response();
 		}
 
-
 		int64_t gen_req_id()
 		{
 			static std::atomic_int64_t req_id = 1;
 			return req_id++;
-		}
-
-		template<typename ...Args>
-		std::string make_req(const std::string &rpc_name, int64_t req_id, std::tuple<Args...> &&tp)
-		{
-			using namespace detail;
-			std::string buffer;
-			uint32_t buffer_size = uint32_t(
-				endec::get_sizeof(req_id) +
-				endec::get_sizeof(tp) +
-				endec::get_sizeof(rpc_name) +
-				endec::get_sizeof(magic_code) +
-				endec::get_sizeof(uint32_t()));
-
-			buffer.resize(buffer_size);
-			uint8_t*ptr = (uint8_t*)buffer.data();
-			endec::put(ptr, buffer_size);
-			endec::put(ptr, magic_code);
-			endec::put(ptr, req_id);
-			endec::put(ptr, rpc_name);
-			endec::put(ptr, std::move(tp));
-			return std::move(buffer);
 		}
 		void reset_cancel_get_response()
 		{

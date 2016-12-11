@@ -251,7 +251,7 @@ namespace xsimple_rpc
 			inline typename std::enable_if<std::is_same<T, int64_t>::value, T>::type
 				get(uint8_t *&ptr)
 			{
-				return static_cast<T>(get<uint16_t>(ptr));
+				return static_cast<T>(get<uint64_t>(ptr));
 			}
 
 			template<typename T>

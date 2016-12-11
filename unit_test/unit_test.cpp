@@ -30,6 +30,20 @@ struct MyStruct
 		world = endec::get<decltype(world)>(ptr);
 		ints = endec::get<decltype(ints)>(ptr);
 	}
+
+	std::string func(int, int)
+	{
+		return hello;
+	}
+
+	std::string func2()
+	{
+		return hello;
+	}
+	void func3()const
+	{
+		return;
+	}
 };
 
 
@@ -42,7 +56,7 @@ namespace funcs
 
 XTEST_SUITE(endnc)
 {
-	XUNIT_TEST(rpc_call_impl)
+	XUNIT_TEST(decode)
 	{
 		MyStruct obj, ob2;
 		obj.hello = "hello";
@@ -59,17 +73,6 @@ XTEST_SUITE(endnc)
 		xassert(ob2.world == obj.world);
 		xassert(ob2.ints == obj.ints);
 	}
-	XUNIT_TEST(decode)
-	{
-		xsimple_rpc::client client;
-
-		MyStruct obj;
-		obj.hello = "hello";
-		obj.world = 192982772; 20 + 4 + 4 + 4;
-		obj.ints = { 1,2,3,4,5 };
-		client.rpc_call<funcs::hello>(1, false, obj);
-	}
-
 }
 
 XTEST_SUITE(rpc_server)
@@ -78,7 +81,12 @@ XTEST_SUITE(rpc_server)
 	{
 		using namespace xsimple_rpc;
 
-		server server_;
-		server_.regist("hello world", [](int) {});
+		rpc_server rpc_server_;
+		rpc_server_.regist("hello world", [](int)->std::string { return{}; });
+
+		MyStruct obj;
+		rpc_server_.regist("func", &MyStruct::func, obj);
+		rpc_server_.regist("func2", &MyStruct::func2, obj);
+		rpc_server_.regist("func3", &MyStruct::func3, obj);
 	}
 }

@@ -46,6 +46,7 @@ namespace xsimple_rpc
 						return;
 					}
 				});
+				conn_.async_recv(sizeof(uint32_t));
 			}
 			bool recv_data_callback(char *data, std::size_t len)
 			{
@@ -63,7 +64,7 @@ namespace xsimple_rpc
 						std::cout << "msg error" << std::endl;
 						return false;
 					}
-					conn_.async_recv((std::size_t)msg_len_);
+					conn_.async_recv((std::size_t)msg_len_ - sizeof(int32_t));
 					msg_len_ = 0;
 					return true;
 				}
@@ -83,6 +84,7 @@ namespace xsimple_rpc
 				conn_.async_recv(sizeof(uint32_t));
 				item->result_ = endec::get<std::string>(ptr);
 				cv_.notify_one();
+				return true;
 			}
 			void heartbeat_callback()
 			{
@@ -99,7 +101,7 @@ namespace xsimple_rpc
 			std::mutex mtx_;
 			std::condition_variable cv_;
 			xnet::connection conn_;
-			std::shared_ptr<xnet::msgbox<std::function<void()>>> msgbox_;
+			int64_t msgbox_index_ = 0;
 			std::list<std::shared_ptr<rpc_req>> req_item_list_;
 			std::list<std::shared_ptr<rpc_req>> wait_rpc_resp_list_;
 		};
