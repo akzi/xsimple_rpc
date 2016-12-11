@@ -115,7 +115,13 @@
   <ItemGroup>
     <ClInclude Include="..\include\detail\detail.hpp" />
     <ClInclude Include="..\include\detail\dispatcher.hpp" />
-    <ClInclude Include="..\include\endec.hpp" />
+    <ClInclude Include="..\include\detail\endec.hpp" />
+    <ClInclude Include="..\include\detail\rpc_req.hpp" />
+    <ClInclude Include="..\include\detail\rpc_session.hpp" />
+    <ClInclude Include="..\include\rpc_client.hpp" />
+    <ClInclude Include="..\include\rpc_engine.hpp" />
+    <ClInclude Include="..\include\rpc_error.hpp" />
+    <ClInclude Include="..\include\rpc_server.hpp" />
     <ClInclude Include="..\include\xsimple_rpc.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

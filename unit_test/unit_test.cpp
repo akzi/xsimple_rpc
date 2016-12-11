@@ -5,6 +5,8 @@
 xtest_run;
 
 
+using namespace xsimple_rpc::detail;
+
 struct MyStruct
 {
 	std::string hello;

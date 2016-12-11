@@ -32,8 +32,26 @@
     <ClInclude Include="..\include\detail\dispatcher.hpp">
       <Filter>include\detail</Filter>
     </ClInclude>
-    <ClInclude Include="..\include\endec.hpp">
+    <ClInclude Include="..\include\rpc_client.hpp">
       <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\rpc_error.hpp">
+      <Filter>include\detail</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\detail\rpc_session.hpp">
+      <Filter>include\detail</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\detail\rpc_req.hpp">
+      <Filter>include\detail</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\rpc_server.hpp">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\rpc_engine.hpp">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\detail\endec.hpp">
+      <Filter>include\detail</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

@@ -12,4 +12,6 @@
 #include "../../../xutil/include/function_traits.hpp"
 #include "../../../xutil/include/make_index_sequence.hpp"
 //#include "dispatcher.hpp"
-#include "../endec.hpp"
+#include "endec.hpp"
+#include "rpc_req.hpp"
+#include "rpc_session.hpp"
