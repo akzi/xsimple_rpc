@@ -11,7 +11,7 @@
 #include "../../../xnet/include/xnet.hpp"
 #include "../../../xutil/include/function_traits.hpp"
 #include "../../../xutil/include/make_index_sequence.hpp"
-//#include "dispatcher.hpp"
 #include "endec.hpp"
+#include "func_register.hpp"
 #include "rpc_req.hpp"
 #include "rpc_session.hpp"

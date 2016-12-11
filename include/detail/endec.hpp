@@ -379,11 +379,11 @@ namespace xsimple_rpc
 				return get_tp_impl<Args...>(ptr, std::make_index_sequence<sizeof ...(Args)>());
 			}
 
-			template<typename Tuple, typename First = typename std::tuple_element<0, Tuple>::type>
-			inline typename std::enable_if<1, Tuple>::type
+			template<typename ...Args>
+			inline typename std::enable_if<sizeof...(Args) >= 2,std::tuple<Args...>>::type
 				get(uint8_t *&ptr)
 			{
-				return get_tp_helper<Tuple>(ptr);
+				return get_tp_helper<Args...>(ptr);
 			}
 		}
 	}

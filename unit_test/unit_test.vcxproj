@@ -114,7 +114,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\include\detail\detail.hpp" />
-    <ClInclude Include="..\include\detail\dispatcher.hpp" />
+    <ClInclude Include="..\include\detail\func_register.hpp" />
     <ClInclude Include="..\include\detail\endec.hpp" />
     <ClInclude Include="..\include\detail\rpc_req.hpp" />
     <ClInclude Include="..\include\detail\rpc_session.hpp" />

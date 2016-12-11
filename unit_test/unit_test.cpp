@@ -69,4 +69,16 @@ XTEST_SUITE(endnc)
 		obj.ints = { 1,2,3,4,5 };
 		client.rpc_call<funcs::hello>(1, false, obj);
 	}
+
+}
+
+XTEST_SUITE(rpc_server)
+{
+	XUNIT_TEST(regist)
+	{
+		using namespace xsimple_rpc;
+
+		server server_;
+		server_.regist("hello world", [](int) {});
+	}
 }

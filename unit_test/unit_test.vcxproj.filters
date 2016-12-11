@@ -29,9 +29,6 @@
     <ClInclude Include="..\include\detail\detail.hpp">
       <Filter>include\detail</Filter>
     </ClInclude>
-    <ClInclude Include="..\include\detail\dispatcher.hpp">
-      <Filter>include\detail</Filter>
-    </ClInclude>
     <ClInclude Include="..\include\rpc_client.hpp">
       <Filter>include</Filter>
     </ClInclude>
@@ -51,6 +48,9 @@
       <Filter>include</Filter>
     </ClInclude>
     <ClInclude Include="..\include\detail\endec.hpp">
+      <Filter>include\detail</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\detail\func_register.hpp">
       <Filter>include\detail</Filter>
     </ClInclude>
   </ItemGroup>

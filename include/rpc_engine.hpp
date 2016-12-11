@@ -5,7 +5,7 @@ namespace xsimple_rpc
 	class rpc_engine
 	{
 	public:
-		rpc_engine(std::size_t threadsize_)
+		rpc_engine(std::size_t threadsize_ = std::thread::hardware_concurrency())
 		{
 			proactor_pool_.set_size(threadsize_);
 			init();
@@ -70,6 +70,10 @@ namespace xsimple_rpc
 				});
 			};
 			return std::move(_client);
+		}
+		xnet::proactor_pool &get_proactor_pool()
+		{
+			return proactor_pool_;
 		}
 	private:
 		using msgbox_t = xnet::msgbox<std::function<void()>>;
