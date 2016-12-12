@@ -116,6 +116,7 @@ namespace xsimple_rpc
 					return;
 				}else if (step == e_msg_data)
 				{
+					step = e_msg_len;
 					if (!recv_msg_callback(data, len, session))
 						goto close_conn;
 					_conn.async_recv(sizeof(uint32_t));

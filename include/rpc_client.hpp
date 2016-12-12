@@ -33,6 +33,7 @@ namespace xsimple_rpc
 	private:
 		client()
 		{
+
 		}
 		void move_reset(client &&other)
 		{
@@ -81,8 +82,10 @@ namespace xsimple_rpc
 			auto buffer = make_req(rpc_name, req_id, std::forward_as_tuple(args...));
 			auto get_resp = send_req(std::move(buffer), req_id);
 			set_cancel_get_response(std::move(get_resp.second));
+			xnet::guard guard([&] {
+				reset_cancel_get_response();
+			});
 			get_resp.first();
-			reset_cancel_get_response();
 		}
 
 		int64_t gen_req_id()
