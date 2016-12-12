@@ -50,45 +50,47 @@ namespace xsimple_rpc
 			bool recv_data_callback(char *data, std::size_t len)
 			{
 				uint8_t *ptr = reinterpret_cast<uint8_t*>(data);
+				uint8_t *end = reinterpret_cast<uint8_t*>(data) + len;
 				if (msg_len_ == 0 && len == sizeof(msg_len_))
 				{
-					msg_len_ = endec::get<uint32_t>(ptr);
-					static std::size_t min_msg_len =
-						endec::get_sizeof(magic_code) +
-						endec::get_sizeof(uint32_t()) +
-						endec::get_sizeof(uint64_t());
-					if (msg_len_ < min_msg_len)
+					msg_len_ = endec::get<uint32_t>(ptr, end);
+					if (msg_len_ < min_rpc_msg_len())
 					{
-						std::cout << "msg error" << std::endl;
+						std::cout << "msg len invalid" << std::endl;
 						return false;
 					}
 					conn_.async_recv((std::size_t)msg_len_ - sizeof(int32_t));
 					msg_len_ = 0;
 					return true;
 				}
-
-				auto magic_code = endec::get<std::string>(ptr);
-				auto req_id = endec::get<int64_t>(ptr);
-				if (req_id == 0)
+				try
 				{
-					heartbeat_callback();
-					return true;
+					auto magic_code = endec::get<std::string>(ptr, end);
+					auto req_id = endec::get<int64_t>(ptr, end);
+					auto item = wait_rpc_resp_list_.front();
+					wait_rpc_resp_list_.pop_front();
+					if (item->req_id_ != req_id)
+						return false;
+					conn_.async_recv(sizeof(uint32_t));
+					item->result_ = endec::get<std::string>(ptr, end);
+					item->status_ = rpc_req::status::e_ok;
+					cv_.notify_one();
 				}
-				auto item = wait_rpc_resp_list_.front();
-				wait_rpc_resp_list_.pop_front();
-				if (item->req_id_ != req_id)
+				catch (const std::exception& e)
+				{
+					std::cout << e.what() << std::endl;
 					return false;
-				conn_.async_recv(sizeof(uint32_t));
-				item->result_ = endec::get<std::string>(ptr);
-				cv_.notify_one();
+				}
 				return true;
-			}
-			void heartbeat_callback()
-			{
-
 			}
 			void close()
 			{
+				std::unique_lock<std::mutex> locker(mtx_);
+				for (auto &itr : wait_rpc_resp_list_)
+					itr->status_ = rpc_req::status::e_rpc_error;
+				for (auto &itr : req_item_list_)
+					itr->status_ = rpc_req::status::e_rpc_error;
+				cv_.notify_all();
 				is_close_ = true;
 			}
 			uint32_t msg_len_ = 0;

@@ -28,32 +28,43 @@ namespace xsimple_rpc
 			conn_.regist_recv_callback([this](char *data, std::size_t len) {
 				
 				if (len == 0)
-					goto laber_close;
+					goto _close;
 
 				if (step_ == e_msg_len)
 				{
 					step_ = e_msg_data;
 					uint8_t *ptr = (uint8_t*)data;
-					uint32_t msg_len = endec::get<uint32_t>(ptr);
-					conn_.async_recv(msg_len - sizeof(uint32_t));
+					uint8_t *end = (uint8_t*)data + len;
+					uint32_t msg_len = endec::get<uint32_t>(ptr, end);
+					if (msg_len < min_rpc_msg_len())
+						goto _close;
+					conn_.async_recv(msg_len -sizeof(uint32_t)) ;
 					return;
 				}
 				else if (step_ == e_msg_data)
 				{
 					step_ = e_msg_len;
 					uint8_t *ptr = (uint8_t*)data;
-					if (endec::get<std::string>(ptr) != magic_code)
-						goto laber_close;
-					auto req_id = endec::get<uint64_t>(ptr);
-					auto resp = endec::get<std::string>(ptr);
-					if (callbacks_.empty() || callbacks_.front().first != req_id)
-						goto laber_close;
-					callbacks_.front().second(resp);
-					callbacks_.pop_front();
-					conn_.async_recv(sizeof(uint32_t));
-					return;
+					uint8_t *end = (uint8_t*)data + len;
+					try
+					{
+						if (endec::get<std::string>(ptr, end) != magic_code)
+							goto _close;
+						auto req_id = endec::get<uint64_t>(ptr, end);
+						auto resp = endec::get<std::string>(ptr, end);
+						if (callbacks_.empty() || callbacks_.front().first != req_id)
+							goto _close;
+						callbacks_.front().second(resp);
+						callbacks_.pop_front();
+						conn_.async_recv(sizeof(uint32_t));
+						return;
+					}
+					catch (const std::exception &e)
+					{
+						std::cout << e.what() << std::endl;
+					}
 				}
-			laber_close:
+			_close:
 				close();
 				return;
 			});
@@ -128,7 +139,8 @@ namespace xsimple_rpc
 			auto req = make_req(rpc_name, id);
 			callbacks_.emplace_back(id, [this, callback](const std::string &resp) {
 				uint8_t *ptr = (uint8_t *)resp.data();
-				callback(endec::get<Ret>(ptr));
+				uint8_t *end = (uint8_t *)resp.data() + resp.size();
+				callback(endec::get<Ret>(ptr, end));
 			});
 			if (is_send_)
 			{
@@ -150,7 +162,8 @@ namespace xsimple_rpc
 			auto req = make_req(rpc_name, id, std::move(_tuple));
 			callbacks_.emplace_back(id, [this, callback](const std::string &resp) {
 				uint8_t *ptr = (uint8_t *)resp.data();
-				callback(endec::get<Ret>(ptr));
+				uint8_t *end = (uint8_t *)resp.data() + resp.size();
+				callback(endec::get<Ret>(ptr, end));
 			});
 			if (is_send_)
 			{

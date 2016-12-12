@@ -16,15 +16,25 @@ namespace xsimple_rpc
 		{
 			enum class status
 			{
+				e_null,
 				e_ok,
 				e_cancel,
 				e_rpc_error,
 			};
-			status status_ = status::e_ok;
+			status status_ = status::e_null;
 			int64_t req_id_;
 			std::string result_;
 			std::string req_buffer_;
 		};
+		inline std::size_t min_rpc_msg_len()
+		{
+			static std::size_t min_rpc_len_ = 
+			endec::get_sizeof(uint64_t()) +
+				endec::get_sizeof(std::string()) +
+				endec::get_sizeof(magic_code) +
+				endec::get_sizeof(uint32_t());
+			return min_rpc_len_;
+		}
 		template<typename ...Args>
 		inline std::string make_req(const std::string &rpc_name, int64_t req_id, const std::tuple<Args...> &tp)
 		{

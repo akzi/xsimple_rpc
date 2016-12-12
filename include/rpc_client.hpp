@@ -69,10 +69,10 @@ namespace xsimple_rpc
 			xnet::guard guard([&] {
 				reset_cancel_get_response();
 			});
-			uint8_t *beg = (uint8_t*)resp.data();
-			uint8_t *end = beg + resp.size();
-			auto res = endec::get<Ret>(beg);
-			if (beg != end)
+			uint8_t *ptr = (uint8_t*)resp.data();
+			uint8_t *end = ptr + resp.size();
+			auto res = endec::get<Ret>(ptr, end);
+			if (ptr != end)
 				throw std::runtime_error("rpc resp error");
 			return std::move(res);
 		}
@@ -93,10 +93,10 @@ namespace xsimple_rpc
 			xnet::guard guard([&] {
 				reset_cancel_get_response();
 			});
-			uint8_t *beg = (uint8_t*)resp.data();
-			uint8_t *end = beg + resp.size();
-			auto res = endec::get<Ret>(beg);
-			if (beg != end)
+			uint8_t *ptr = (uint8_t*)resp.data();
+			uint8_t *end = ptr + resp.size();
+			auto res = endec::get<Ret>(ptr, end);
+			if (ptr != end)
 				throw std::runtime_error("rpc resp error");
 			return std::move(res);
 		}

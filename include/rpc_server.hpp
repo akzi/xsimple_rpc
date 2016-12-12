@@ -113,7 +113,8 @@ namespace xsimple_rpc
 				{
 					step = e_msg_data;
 					uint8_t *ptr = (uint8_t*)data;
-					_conn.async_recv(detail::endec::get<uint32_t>(ptr) - sizeof(uint32_t));
+					uint8_t *end = (uint8_t*)data + len;
+					_conn.async_recv(detail::endec::get<uint32_t>(ptr, end) - sizeof(uint32_t));
 					return;
 				}else if (step == e_msg_data)
 				{
@@ -131,14 +132,14 @@ namespace xsimple_rpc
 		bool recv_msg_callback(char *data, std::size_t len, rpc_session &session)
 		{
 			uint8_t *ptr = (uint8_t*)data;
-			if (detail::endec::get<std::string>(ptr) != magic_code)
-				return false;
-			uint64_t req_id = detail::endec::get<uint64_t>(ptr);
-			std::string req_name = detail::endec::get<std::string>(ptr);
+			uint8_t *end = (uint8_t*)data + len;
 			try
 			{
-				auto result = func_register_.invoke(req_name, ptr);
-				session.do_send_resp(detail::make_resp(req_id, std::move(result)));
+				if (detail::endec::get<std::string>(ptr, end) != magic_code)
+					return false;
+				uint64_t req_id = detail::endec::get<uint64_t>(ptr, end);
+				std::string req_name = detail::endec::get<std::string>(ptr, end);
+				session.do_send_resp(detail::make_resp(req_id, func_register_.invoke(req_name, ptr, end)));
 			}
 			catch (const std::exception& e)
 			{

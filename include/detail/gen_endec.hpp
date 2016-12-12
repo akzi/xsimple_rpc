@@ -42,13 +42,13 @@
 #define MAKE_ARG_LIST_40(op, arg, ...)  op(arg) MARCO_EXPAND(MAKE_ARG_LIST_39(op, __VA_ARGS__))
 
 #define XENCODE_OBJECT(Obj) xsimple_rpc::detail::endec::put(ptr, Obj);
-#define XDECODE_OBJECT(Obj) Obj = xsimple_rpc::detail::endec::get<decltype(Obj)>(ptr);
+#define XDECODE_OBJECT(Obj) Obj = xsimple_rpc::detail::endec::get<decltype(Obj)>(ptr, end);
 #define XGET_SIZEOF_OBJECT(Obj) size += xsimple_rpc::detail::endec::get_sizeof(Obj);
 
 #define GEN_XENCODE_FUNC_IMPL(...) void xencode(uint8_t *&ptr) const { __VA_ARGS__; }
-#define GEN_XDECODE_FUNC_IMPL(...) void xdecode(uint8_t *&ptr) { __VA_ARGS__; }
-#define GEN_XGET_SIZEOF_FUNC_IMPL(...) std::size_t xget_sizeof() const \
-{std::size_t size = 0; __VA_ARGS__; return size;}
+#define GEN_XDECODE_FUNC_IMPL(...) void xdecode(uint8_t *&ptr, uint8_t *const end) { __VA_ARGS__; }
+#define GEN_XGET_SIZEOF_FUNC_IMPL(...) std::size_t xget_sizeof() const  { \
+std::size_t size = 0; __VA_ARGS__; return size;}
 
 #define MACRO_CONCAT(A, B)  A##_##B
 

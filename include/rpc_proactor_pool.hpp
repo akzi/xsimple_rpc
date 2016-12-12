@@ -116,7 +116,9 @@ namespace xsimple_rpc
 
 			return{ [session, item] {
 				std::unique_lock<std::mutex> locker(session->mtx_);
-				session->cv_.wait(locker);
+				session->cv_.wait(locker, [item] { return item->result_.size() ||
+					item->status_ != rpc_req::status::e_null;
+				});
 				if (item->status_ == rpc_req::status::e_cancel)
 					throw rpc_cancel();
 				else if (item->status_ == rpc_req::status::e_rpc_error)

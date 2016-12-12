@@ -114,10 +114,10 @@ namespace xsimple_rpc
 
 			template<typename T>
 			inline typename std::enable_if<std::is_member_function_pointer<decltype(&T::xdecode)>::value, T>::type
-				get(uint8_t *&ptr)
+				get(uint8_t *&ptr, uint8_t *const end)
 			{
 				T value;
-				value.xdecode(ptr);
+				value.xdecode(ptr, end);
 				return std::move(value);
 			}
 
@@ -131,8 +131,10 @@ namespace xsimple_rpc
 			//bool 
 			template<typename T>
 			inline typename std::enable_if<std::is_same<T, bool>::value, T>::type
-				get(uint8_t *&ptr)
+				get(uint8_t *&ptr, uint8_t *const end)
 			{
+				if (end - ptr < sizeof(T))
+					throw std::out_of_range("endec::get out_of_range");
 				uint8_t value = ptr[0];
 				ptr += sizeof(value);
 				return value > 0;
@@ -148,8 +150,10 @@ namespace xsimple_rpc
 			//integral
 			template<typename T>
 			inline typename std::enable_if<std::is_same<T, uint8_t>::value, T>::type
-				get(uint8_t *&ptr)
+				get(uint8_t *&ptr, uint8_t *const end)
 			{
+				if (end - ptr < sizeof(T))
+					throw std::out_of_range("endec::get out_of_range");
 				uint8_t value = ptr[0];
 				ptr += sizeof(value);
 				return value;
@@ -157,8 +161,10 @@ namespace xsimple_rpc
 
 			template<typename T>
 			inline typename std::enable_if<std::is_same<T, int8_t>::value, T>::type
-				get(uint8_t &&buffer)
+				get(uint8_t *&ptr, uint8_t *const end)
 			{
+				if (end - ptr < sizeof(T))
+					throw std::out_of_range("endec::get out_of_range");
 				return static_cast<T>(get<uint8_t>(ptr));
 			}
 
@@ -180,8 +186,10 @@ namespace xsimple_rpc
 
 			template<typename T>
 			inline typename std::enable_if<std::is_same<T, uint16_t>::value, T>::type
-				get(uint8_t *&ptr)
+				get(uint8_t *&ptr, uint8_t *const end)
 			{
+				if (end - ptr < sizeof(T))
+					throw std::out_of_range("endec::get out_of_range");
 				uint16_t value =
 					(((uint16_t)ptr[0]) << 8) |
 					((uint16_t)ptr[1]);
@@ -200,8 +208,10 @@ namespace xsimple_rpc
 
 			template<typename T>
 			inline typename std::enable_if<std::is_same<T, int16_t>::value, T>::type
-				get(std::string &&buffer)
+				get(uint8_t *&ptr, uint8_t *const end)
 			{
+				if (end - ptr < sizeof(T))
+					throw std::out_of_range("endec::get out_of_range");
 				return static_cast<T>(get<uint16_t>(ptr));
 			}
 
@@ -214,8 +224,10 @@ namespace xsimple_rpc
 
 			template<typename T>
 			inline typename std::enable_if<std::is_same<T, uint32_t>::value, T>::type
-				get(uint8_t *&ptr)
+				get(uint8_t *&ptr, uint8_t *const end)
 			{
+				if (end - ptr < sizeof(T))
+					throw std::out_of_range("endec::get out_of_range");
 				uint32_t value =
 					(((uint32_t)ptr[0]) << 24) |
 					(((uint32_t)ptr[1]) << 16) |
@@ -239,9 +251,11 @@ namespace xsimple_rpc
 
 			template<typename T>
 			inline typename std::enable_if<std::is_same<T, int32_t>::value, T>::type
-				get(uint8_t *&ptr)
+				get(uint8_t *&ptr, uint8_t *const end)
 			{
-				return static_cast<T>(get<uint32_t>(ptr));
+				if (end - ptr < sizeof(T))
+					throw std::out_of_range("endec::get out_of_range");
+				return static_cast<T>(get<uint32_t>(ptr, end));
 			}
 
 			template<typename T>
@@ -253,8 +267,10 @@ namespace xsimple_rpc
 
 			template<typename T>
 			inline typename std::enable_if<std::is_same<T, uint64_t>::value, T>::type
-				get(unsigned char *&ptr)
+				get(uint8_t *&ptr, uint8_t *const end)
 			{
+				if (end - ptr < sizeof(T))
+					throw std::out_of_range("endec::get out_of_range");
 				uint64_t value =
 					((((uint64_t)ptr[0]) << 56) |
 					(((uint64_t)ptr[1]) << 48) |
@@ -285,9 +301,11 @@ namespace xsimple_rpc
 
 			template<typename T>
 			inline typename std::enable_if<std::is_same<T, int64_t>::value, T>::type
-				get(uint8_t *&ptr)
+				get(uint8_t *&ptr, uint8_t *const end)
 			{
-				return static_cast<T>(get<uint64_t>(ptr));
+				if (end - ptr < sizeof(T))
+					throw std::out_of_range("endec::get out_of_range");
+				return static_cast<T>(get<uint64_t>(ptr, end));
 			}
 
 			template<typename T>
@@ -299,8 +317,10 @@ namespace xsimple_rpc
 
 			template<typename T>
 			inline typename std::enable_if<std::is_floating_point<T>::value, T>::type
-				get(std::string &&buffer)
+				get(uint8_t *&ptr, uint8_t *const end)
 			{
+				if (end - ptr < sizeof(T))
+					throw std::out_of_range("");
 				auto value = *reinterpret_cast<T*>(ptr);
 				ptr += sizeof(value);
 				return value;
@@ -317,9 +337,11 @@ namespace xsimple_rpc
 			//string 
 			template<typename T>
 			inline typename std::enable_if<std::is_same<T, std::string>::value, T>::type
-				get(uint8_t *&ptr)
+				get(uint8_t *&ptr, uint8_t *const end)
 			{
-				auto len = get<uint32_t>(ptr);
+				auto len = get<uint32_t>(ptr, end);
+				if (end - ptr < len)
+					throw std::out_of_range("");
 				std::string result((char*)ptr, len);
 				ptr += len;
 				return std::move(result);
@@ -344,10 +366,10 @@ namespace xsimple_rpc
 			template<typename Pair,
 				typename first_type = typename Pair::first_type, 
 				typename second_type = typename Pair::second_type>
-			Pair get(uint8_t *& ptr)
+			Pair get(uint8_t *& ptr, uint8_t *const end)
 			{
-				auto first = get<first_type>(ptr);
-				return { first, get<second_type>(ptr)};
+				auto first = get<first_type>(ptr, end);
+				return { first, get<second_type>(ptr, end)};
 			}
 
 			template<typename Container, typename value_type = typename Container::value_type>
@@ -362,12 +384,12 @@ namespace xsimple_rpc
 			template<typename Container, typename value_type = typename Container::value_type>
 			inline typename std::enable_if<std::is_same<Container, std::vector<value_type >>::value  || 
 				std::is_same<Container, std::list<value_type >>::value ,Container>::type
-				get(uint8_t *&ptr)
+				get(uint8_t *&ptr, uint8_t *const end)
 			{
 				Container container;
-				auto size = get<uint32_t>(ptr);
+				auto size = get<uint32_t>(ptr, end);
 				for (uint32_t i = 0; i < size; ++i)
-					container.emplace_back(get<value_type>(ptr));
+					container.emplace_back(get<value_type>(ptr, end));
 				return std::move(container);
 			}
 
@@ -375,14 +397,14 @@ namespace xsimple_rpc
 				typename key_type = typename Container::key_type, 
 				typename mapped_type = typename Container::mapped_type>
 			inline typename std::enable_if<std::is_same<std::map<key_type, mapped_type>, Container>::value, Container>::type
-				get(uint8_t *&ptr)
+				get(uint8_t *&ptr, uint8_t *const end)
 			{
 				Container container;
-				auto size = get<uint32_t>(ptr);
+				auto size = get<uint32_t>(ptr, end);
 				for (uint32_t i = 0; i < size; ++i)
 				{
-					auto key = get<key_type>(ptr);
-					container.emplace(key, get<mapped_type>(ptr));
+					auto key = get<key_type>(ptr, end);
+					container.emplace(key, get<mapped_type>(ptr, end));
 				}
 				return std::move(container);
 			}
@@ -390,13 +412,13 @@ namespace xsimple_rpc
 			template<typename Container,
 				typename key_type = typename Container::key_type>
 				inline typename std::enable_if<std::is_same<std::set<key_type>, Container>::value, Container>::type
-				get(uint8_t *&ptr)
+				get(uint8_t *&ptr, uint8_t *const end)
 			{
 				Container container;
-				auto size = get<uint32_t>(ptr);
+				auto size = get<uint32_t>(ptr, end);
 				for (uint32_t i = 0; i < size; ++i)
 				{
-					container.emplace(get<key_type>(ptr));
+					container.emplace(get<key_type>(ptr, end));
 				}
 				return std::move(container);
 			}
@@ -427,31 +449,31 @@ namespace xsimple_rpc
 			}
 
 			template<typename Last>
-			inline std::tuple<Last> get_tp_impl(uint8_t *&ptr, std::index_sequence<0>)
+			inline std::tuple<Last> get_tp_impl(uint8_t *&ptr,uint8_t *const end, std::index_sequence<0>)
 			{
 				using value_type = typename std::remove_reference<typename std::remove_const<Last>::type>::type;
-				return std::forward_as_tuple(get<value_type>(ptr));
+				return std::forward_as_tuple(get<value_type>(ptr, end));
 			}
 
 			template<typename First, typename ... Rest, std::size_t ... Tndexes>
-			inline std::tuple<First, Rest...> get_tp_impl(uint8_t *&ptr, std::index_sequence<Tndexes...>)
+			inline std::tuple<First, Rest...> get_tp_impl(uint8_t *&ptr,uint8_t *const end, std::index_sequence<Tndexes...>)
 			{
 				using value_type = typename std::remove_reference<typename std::remove_const<First>::type>::type;
-				return std::tuple_cat(std::forward_as_tuple(get<value_type>(ptr)),
-					get_tp_impl<Rest...>(ptr, std::make_index_sequence<sizeof ...(Rest)>()));
+				return std::tuple_cat(std::forward_as_tuple(get<value_type>(ptr, end)),
+					get_tp_impl<Rest...>(ptr,end, std::make_index_sequence<sizeof ...(Rest)>()));
 			}
 
 			template<typename ...Args>
-			inline std::tuple<Args...> get_tp_helper(uint8_t *&ptr)
+			inline std::tuple<Args...> get_tp_helper(uint8_t *&ptr, uint8_t *const end)
 			{
-				return get_tp_impl<Args...>(ptr, std::make_index_sequence<sizeof ...(Args)>());
+				return get_tp_impl<Args...>(ptr, end, std::make_index_sequence<sizeof ...(Args)>());
 			}
 
 			template<typename ...Args>
 			inline typename std::enable_if<sizeof...(Args) >= 2,std::tuple<Args...>>::type
-				get(uint8_t *&ptr)
+				get(uint8_t *&ptr, uint8_t *const end)
 			{
-				return get_tp_helper<Args...>(ptr);
+				return get_tp_helper<Args...>(ptr, end);
 			}
 		}
 	}
