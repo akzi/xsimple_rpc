@@ -70,7 +70,6 @@ namespace xsimple_rpc
 
 				auto magic_code = endec::get<std::string>(ptr);
 				auto req_id = endec::get<int64_t>(ptr);
-				auto rpc_name = endec::get<std::string>(ptr);
 				if (req_id == 0)
 				{
 					heartbeat_callback();

@@ -25,8 +25,8 @@ std::ostream & operator <<(std::ostream &out, MyStruct &obj)
 
 int main()
 {
-	xsimple_rpc::rpc_engine engine;
-	engine.start();
+	xsimple_rpc::rpc_proactor_pool rpc_proactor;
+	rpc_proactor.start();
 	try
 	{
 		//define rpc
@@ -41,7 +41,7 @@ int main()
 			DEFINE_RPC_PROTO(get_obj, MyStruct());
 		};
 
-		auto client = engine.connect("127.0.0.1", 9001, 0);
+		auto client = rpc_proactor.connect("127.0.0.1", 9001, 0);
 		std::cout << "add: " << client.rpc_call<rpc::add>(1, 2) << std::endl;
 		std::cout << "hello: "<< client.rpc_call<rpc::hello>("hello") << std::endl;;
 		std::cout << "add_str: "<< client.rpc_call<rpc::add_str>(12345,"hello") << std::endl;;

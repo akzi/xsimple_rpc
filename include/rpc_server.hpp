@@ -138,7 +138,7 @@ namespace xsimple_rpc
 			try
 			{
 				auto result = func_register_.invoke(req_name, ptr);
-				session.do_send_resp(detail::make_resp(req_name, req_id, std::move(result)));
+				session.do_send_resp(detail::make_resp(req_id, std::move(result)));
 			}
 			catch (const std::exception& e)
 			{
@@ -150,6 +150,6 @@ namespace xsimple_rpc
 		func_register<std::mutex> func_register_;
 		std::mutex conns_mutex_;
 		std::list<rpc_session> conns_;
-		rpc_engine rpc_engine_;
+		rpc_proactor_pool rpc_engine_;
 	};
 }

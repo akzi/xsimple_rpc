@@ -341,11 +341,13 @@ namespace xsimple_rpc
 				put(ptr, value.second);
 			}
 
-			template<typename Pair, typename first_type = typename std::remove_const<Pair::first_type>::type, typename second_type = typename Pair::second_type>
-			void get(uint8_t *& ptr, const std::pair<first_type, second_type> &value)
+			template<typename Pair,
+				typename first_type = typename Pair::first_type, 
+				typename second_type = typename Pair::second_type>
+			Pair get(uint8_t *& ptr)
 			{
-				get<first_type>(ptr, value.first);
-				get<second_type>(ptr, value.second);
+				auto first = get<first_type>(ptr);
+				return { first, get<second_type>(ptr)};
 			}
 
 			template<typename Container, typename value_type = typename Container::value_type>
@@ -400,44 +402,30 @@ namespace xsimple_rpc
 			}
 
 			template<typename Last>
-			inline void put_tp_impl(uint8_t *&ptr, Last&& last)
+			inline void put_tp_impl(uint8_t *&ptr, const Last& last)
 			{
 				put(ptr, last);
 			}
 
 			template<typename First, typename ... Rest>
-			inline void put_tp_impl(uint8_t *&ptr, First&& first, Rest&&...rest)
+			inline void put_tp_impl(uint8_t *&ptr, const First& first, const Rest &...rest)
 			{
 				put(ptr, first);
-				put_tp_impl(ptr, std::forward<Rest>(rest)...);
+				put_tp_impl(ptr, rest...);
 			}
 
 			template<std::size_t ... Tndexes, typename ... Args>
-			inline void put_tp_helper(uint8_t *&ptr, std::index_sequence<Tndexes...>, std::tuple<Args...>&& tup)
+			inline void put_tp_helper(uint8_t *&ptr, std::index_sequence<Tndexes...>, const std::tuple<Args...>& tup)
 			{
-				put_tp_impl(ptr, std::forward<Args>(std::get<Tndexes>(tup))...);
-			}
-
-			template<std::size_t ... Tndexes, typename ... Args>
-			inline void put_tp_helper(uint8_t *&ptr, std::index_sequence<Tndexes...>, std::tuple<Args...>& tup)
-			{
-				put_tp_impl(ptr, std::forward<Args>(std::get<Tndexes>(tup))...);
+				put_tp_impl(ptr, tup);
 			}
 
 			template<typename ... Args>
-			inline void put(uint8_t *&ptr, std::tuple<Args...>& tup)
+			inline void put(uint8_t *&ptr, const std::tuple<Args...>& tup)
 			{
 				put_tp_helper(ptr, std::make_index_sequence<sizeof...(Args)>(), tup);
 			}
 
-			template<typename ... Args>
-			inline void put(uint8_t *&ptr, std::tuple<Args...>&& tup)
-			{
-				using tuple_type = std::tuple<Args...>;
-				put_tp_helper(ptr, std::make_index_sequence<sizeof...(Args)>(), std::forward<tuple_type>(tup));
-			}
-
-			//
 			template<typename Last>
 			inline std::tuple<Last> get_tp_impl(uint8_t *&ptr, std::index_sequence<0>)
 			{

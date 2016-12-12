@@ -7,7 +7,7 @@ namespace xsimple_rpc
 		using get_response = std::function<std::string()>;
 		using cancel_get_response = std::function<void()>;
 		using send_rpc_result = std::pair <get_response, cancel_get_response>;
-		friend class rpc_engine;
+		friend class rpc_proactor_pool;
 	public:
 		
 		client(client &&other)
@@ -110,6 +110,8 @@ namespace xsimple_rpc
 			using detail::make_req;
 			auto req_id = gen_req_id();
 			auto buffer = make_req(rpc_name, req_id, std::forward_as_tuple(args...));
+			if(!send_req)
+				throw std::logic_error("client isn't connected");
 			auto get_resp = send_req(std::move(buffer), req_id);
 			set_cancel_get_response(std::move(get_resp.second));
 			xnet::guard guard([&] {
@@ -124,6 +126,8 @@ namespace xsimple_rpc
 			using detail::make_req;
 			auto req_id = gen_req_id();
 			auto buffer = make_req(rpc_name, req_id);
+			if (!send_req)
+				throw std::logic_error("client isn't connected");
 			auto get_resp = send_req(std::move(buffer), req_id);
 			set_cancel_get_response(std::move(get_resp.second));
 			xnet::guard guard([&] {

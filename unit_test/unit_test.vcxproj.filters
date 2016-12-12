@@ -44,9 +44,6 @@
     <ClInclude Include="..\include\rpc_server.hpp">
       <Filter>include</Filter>
     </ClInclude>
-    <ClInclude Include="..\include\rpc_engine.hpp">
-      <Filter>include</Filter>
-    </ClInclude>
     <ClInclude Include="..\include\detail\endec.hpp">
       <Filter>include\detail</Filter>
     </ClInclude>
@@ -55,6 +52,12 @@
     </ClInclude>
     <ClInclude Include="..\include\detail\gen_endec.hpp">
       <Filter>include\detail</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\rpc_proactor_pool.hpp">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\async_client.hpp">
+      <Filter>include</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
