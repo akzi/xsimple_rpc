@@ -37,7 +37,6 @@ namespace funcs
 }
 
 
-
 XTEST_SUITE(endnc)
 {
 	XUNIT_TEST(decode)
@@ -58,6 +57,50 @@ XTEST_SUITE(endnc)
 		xassert(obj.hello== ob2.hello);
 		xassert(obj.world == ob2.world);
 		xassert(obj.ints == ob2.ints);
+	}
+
+	XUNIT_TEST(map_put)
+	{
+		std::map<std::string, MyStruct> map;
+		std::string buffer;
+		buffer.resize(endec::get_sizeof(map));
+		uint8_t *ptr = (uint8_t *)buffer.data();
+		endec::put(ptr, map);
+	}
+
+	XUNIT_TEST(map_get)
+	{
+		std::map<std::string, MyStruct> map;
+		std::string buffer;
+		buffer.resize(endec::get_sizeof(map));
+		uint8_t *ptr = (uint8_t *)buffer.data();
+		endec::put(ptr, map);
+
+		ptr = (uint8_t *)buffer.data();
+		auto res = endec::get<decltype(map)>(ptr);
+	}
+
+	XUNIT_TEST(set_put)
+	{
+		std::set<std::string> set;
+
+		std::string buffer;
+		buffer.resize(endec::get_sizeof(set));
+		uint8_t *ptr = (uint8_t *)buffer.data();
+		endec::put(ptr, set);
+	}
+
+	XUNIT_TEST(set_get)
+	{
+		std::set<std::string> obj;
+
+		std::string buffer;
+		buffer.resize(endec::get_sizeof(obj));
+		uint8_t *ptr = (uint8_t *)buffer.data();
+		endec::put(ptr, obj);
+
+		ptr = (uint8_t *)buffer.data();
+		auto res = endec::get<decltype(obj)>(ptr);
 	}
 }
 

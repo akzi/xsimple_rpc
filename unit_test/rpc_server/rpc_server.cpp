@@ -1,5 +1,18 @@
 #include "../../Include/xsimple_rpc.hpp"
 
+struct MyStruct
+{
+	std::string hello;
+	int world;
+	std::vector<int> ints;
+
+	XENDEC(hello, world, ints);
+
+	std::string func(int, int) { return hello; }
+	std::string func2() { return hello; }
+	void func3()const { return; }
+};
+
 int main()
 {
 	xsimple_rpc::rpc_server server;
@@ -7,32 +20,7 @@ int main()
 	server.regist("add", [](int a, int &b) { return a + b; });
 	server.regist("hello", [](const std::string &hello) { return std::string("hello world"); });
 	server.regist("add_str", [](int a, const std::string &str ) {return str + std::to_string(a); });
-
-
 	//struct test
-
-	struct MyStruct
-	{
-		std::string hello;
-		int world;
-		std::vector<int> ints;
-
-		XENDEC(hello, world, ints);
-
-		std::string func(int, int)
-		{
-			return hello;
-		}
-
-		std::string func2()
-		{
-			return hello;
-		}
-		void func3()const
-		{
-			return;
-		}
-	};
 	MyStruct obj;
 	obj.hello = "hello";
 	obj.world = 192982772;

@@ -9,21 +9,11 @@ struct MyStruct
 
 	XENDEC(hello, world, ints);
 
-	std::string func(int, int)
-	{
-		return hello;
-	}
-
-	std::string func2()
-	{
-		return hello;
-	}
-	void func3()const
-	{
-		return;
-	}
-	
+	std::string func(int, int){ return hello; }
+	std::string func2(){ return hello; }
+	void func3()const{ return; }
 };
+
 std::ostream & operator <<(std::ostream &out, MyStruct &obj)
 {
 	out << "hello:" << obj.hello << " world: " << obj.world << " ints:[";
@@ -33,26 +23,24 @@ std::ostream & operator <<(std::ostream &out, MyStruct &obj)
 	return out;
 }
 
-//define rpc
-namespace rpc
-{
-	DEFINE_RPC_PROTO(add, int(int,int));
-	DEFINE_RPC_PROTO(hello, std::string(const std::string &));
-	DEFINE_RPC_PROTO(add_str, std::string(int, const std::string& ));
-	DEFINE_RPC_PROTO(func, std::string(int, int));
-	DEFINE_RPC_PROTO(func2, std::string());
-	DEFINE_RPC_PROTO(func3, void());
-	DEFINE_RPC_PROTO(get_obj, MyStruct());
-}
-
-
-
 int main()
 {
 	xsimple_rpc::rpc_engine engine;
 	engine.start();
 	try
 	{
+		//define rpc
+		struct rpc
+		{
+			DEFINE_RPC_PROTO(add, int(int, int));
+			DEFINE_RPC_PROTO(hello, std::string(const std::string &));
+			DEFINE_RPC_PROTO(add_str, std::string(int, const std::string&));
+			DEFINE_RPC_PROTO(func, std::string(int, int));
+			DEFINE_RPC_PROTO(func2, std::string());
+			DEFINE_RPC_PROTO(func3, void());
+			DEFINE_RPC_PROTO(get_obj, MyStruct());
+		};
+
 		auto client = engine.connect("127.0.0.1", 9001, 0);
 		std::cout << "add: " << client.rpc_call<rpc::add>(1, 2) << std::endl;
 		std::cout << "hello: "<< client.rpc_call<rpc::hello>("hello") << std::endl;;
@@ -61,8 +49,6 @@ int main()
 		std::cout << "func2: " << client.rpc_call<rpc::func2>() << std::endl;;
 		std::cout << "func3: " ; (client.rpc_call<rpc::func3>(), std::cout << std::endl);
 		std::cout << "get_obj: " << client.rpc_call<rpc::get_obj>() << std::endl;
-
-
 	}
 	catch (const std::exception& e)
 	{
