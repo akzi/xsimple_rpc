@@ -360,8 +360,8 @@ namespace xsimple_rpc
 			}
 
 			template<typename Container, typename value_type = typename Container::value_type>
-			inline typename std::enable_if<!is_string<Container>::value &&
-				std::is_member_function_pointer<decltype(&Container::emplace_back<value_type>)>::value, Container>::type
+			inline typename std::enable_if<std::is_same<Container, std::vector<value_type >>::value  || 
+				std::is_same<Container, std::list<value_type >>::value ,Container>::type
 				get(uint8_t *&ptr)
 			{
 				Container container;
@@ -417,7 +417,7 @@ namespace xsimple_rpc
 			template<std::size_t ... Tndexes, typename ... Args>
 			inline void put_tp_helper(uint8_t *&ptr, std::index_sequence<Tndexes...>, const std::tuple<Args...>& tup)
 			{
-				put_tp_impl(ptr, tup);
+				put_tp_impl(ptr, std::get<Tndexes>(tup)...);
 			}
 
 			template<typename ... Args>

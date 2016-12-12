@@ -188,7 +188,9 @@ XTEST_SUITE(async_client)
 
 		using namespace xsimple_rpc;
 		async_client client;
-		client.rpc_call<rpc::add>(std::forward_as_tuple(1,2), [](int) {});
+		client.rpc_call<rpc::add>(std::forward_as_tuple(1,2), [](int result ) {
+			std::cout << result << std::endl;
+		});
 	}
 }
 

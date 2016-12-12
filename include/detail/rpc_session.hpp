@@ -54,7 +54,6 @@ namespace xsimple_rpc
 				{
 					msg_len_ = endec::get<uint32_t>(ptr);
 					static std::size_t min_msg_len =
-						endec::get_sizeof(std::string("heartbeat")) +
 						endec::get_sizeof(magic_code) +
 						endec::get_sizeof(uint32_t()) +
 						endec::get_sizeof(uint64_t());
