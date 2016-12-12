@@ -35,7 +35,8 @@ namespace xsimple_rpc
 					ptr->last_error_code_ = errorc_code;
 					ptr->cv_.notify_one();
 				}); 
-				connector.bind_success_callback([this, index, session_wptr, msgbox_index](xnet::connection &&conn)
+				connector.bind_success_callback(
+					[this, index, session_wptr, msgbox_index](xnet::connection &&conn)
 				{
 					xnet::guard guard([this, index] {del_connector(index); });
 					auto ptr = session_wptr.lock();

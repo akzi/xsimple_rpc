@@ -3,7 +3,7 @@
 struct name\
 {\
 	using func_type = proto ;\
-	static constexpr char *rpc_name = #name;\
+	static char * rpc_name(){	return #name; }\
 };
 namespace xsimple_rpc
 {

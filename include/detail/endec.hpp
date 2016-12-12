@@ -3,6 +3,8 @@
 #include <string>
 #include <vector>
 #include <list>
+#include <map>
+#include <set>
 
 namespace xsimple_rpc
 {
@@ -47,10 +49,50 @@ namespace xsimple_rpc
 				return value.xget_sizeof();
 			}
 
-			template<typename Container, typename T = Container::value_type>
-			inline std::size_t get_sizeof(const Container &c)
+			inline std::size_t get_sizeof(const std::string &value)
 			{
-				return sizeof(uint32_t) + c.size() * get_sizeof(typename T());
+				return sizeof(uint32_t) + value.size();
+			}
+
+			template<typename T>
+			inline std::size_t get_sizeof(const std::vector<T> &value)
+			{
+				auto size = sizeof(uint32_t);
+				for (auto &itr : value)
+					size += get_sizeof(itr);
+				return size;
+			}
+
+			template<typename T>
+			inline std::size_t get_sizeof(const std::list<T> &value)
+			{
+				auto size = sizeof(uint32_t);
+				for (auto &itr : value)
+					size += get_sizeof(itr);
+				return size;
+			}
+			template<typename first_type, typename second_type>
+			inline std::size_t get_sizeof(const std::pair<first_type, second_type> &value)
+			{
+				return get_sizeof(value.first) + get_sizeof(value.second);
+			}
+
+			template<typename key_type, typename map_type>
+			inline std::size_t get_sizeof(const std::map<key_type, map_type> &value)
+			{
+				auto size = sizeof(uint32_t);
+				for (auto &itr : value)
+					size += get_sizeof(itr);
+				return size;
+			}
+
+			template<typename key_type>
+			inline std::size_t get_sizeof(const std::set<key_type> &value)
+			{
+				auto size = sizeof(uint32_t);
+				for (auto &itr : value)
+					size += get_sizeof(itr);
+				return size;
 			}
 
 			template<typename First, typename ...Rest>
@@ -292,6 +334,20 @@ namespace xsimple_rpc
 				ptr += value.size();
 			}
 
+			template<typename first_type, typename second_type>
+			void put(uint8_t *& ptr, const std::pair<first_type, second_type> &value)
+			{
+				put(ptr, value.first);
+				put(ptr, value.second);
+			}
+
+			template<typename Pair, typename first_type = typename std::remove_const<Pair::first_type>::type, typename second_type = typename Pair::second_type>
+			void get(uint8_t *& ptr, const std::pair<first_type, second_type> &value)
+			{
+				get<first_type>(ptr, value.first);
+				get<second_type>(ptr, value.second);
+			}
+
 			template<typename Container, typename value_type = typename Container::value_type>
 			inline typename std::enable_if<!is_string<Container>::value, void>::type
 				put(uint8_t *& ptr, const Container &container)
@@ -310,6 +366,36 @@ namespace xsimple_rpc
 				auto size = get<uint32_t>(ptr);
 				for (uint32_t i = 0; i < size; ++i)
 					container.emplace_back(get<value_type>(ptr));
+				return std::move(container);
+			}
+
+			template<typename Container, 
+				typename key_type = typename Container::key_type, 
+				typename mapped_type = typename Container::mapped_type>
+			inline typename std::enable_if<std::is_same<std::map<key_type, mapped_type>, Container>::value, Container>::type
+				get(uint8_t *&ptr)
+			{
+				Container container;
+				auto size = get<uint32_t>(ptr);
+				for (uint32_t i = 0; i < size; ++i)
+				{
+					auto key = get<key_type>(ptr);
+					container.emplace(key, get<mapped_type>(ptr));
+				}
+				return std::move(container);
+			}
+
+			template<typename Container,
+				typename key_type = typename Container::key_type>
+				inline typename std::enable_if<std::is_same<std::set<key_type>, Container>::value, Container>::type
+				get(uint8_t *&ptr)
+			{
+				Container container;
+				auto size = get<uint32_t>(ptr);
+				for (uint32_t i = 0; i < size; ++i)
+				{
+					container.emplace(get<key_type>(ptr));
+				}
 				return std::move(container);
 			}
 

@@ -27,14 +27,14 @@ namespace xsimple_rpc
 		auto rpc_call(Args ...args)
 		{
 			return rpc_call_impl(xutil::function_traits<typename Proto::func_type>(),
-				Proto::rpc_name,
+				Proto::rpc_name(),
 				std::forward<Args>(args)...);
 		}
 		template<typename Proto>
 		auto rpc_call()
 		{
 			return rpc_call_impl(xutil::function_traits<typename Proto::func_type>(),
-				Proto::rpc_name);
+				Proto::rpc_name());
 		}
 	private:
 		client()
