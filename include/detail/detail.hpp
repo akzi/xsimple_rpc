@@ -15,3 +15,4 @@
 #include "func_register.hpp"
 #include "rpc_req.hpp"
 #include "rpc_session.hpp"
+#include "gen_endec.hpp"

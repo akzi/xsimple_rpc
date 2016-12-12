@@ -30,6 +30,12 @@ namespace xsimple_rpc
 				Proto::rpc_name,
 				std::forward<Args>(args)...);
 		}
+		template<typename Proto>
+		auto rpc_call()
+		{
+			return rpc_call_impl(xutil::function_traits<typename Proto::func_type>(),
+				Proto::rpc_name);
+		}
 	private:
 		client()
 		{
@@ -71,6 +77,30 @@ namespace xsimple_rpc
 			return std::move(res);
 		}
 
+		template<typename Ret>
+		Ret rpc_call_impl(const xutil::function_traits<Ret(void)>&, const std::string &rpc_name)
+		{
+			using detail::make_req;
+			auto req_id = gen_req_id();
+			auto buffer = make_req(rpc_name, req_id);
+			if (!send_req)
+				throw std::logic_error("client isn't connected");
+
+			auto result = send_req(std::move(buffer), req_id);
+			set_cancel_get_response(std::move(result.second));
+			auto resp = result.first();
+
+			xnet::guard guard([&] {
+				reset_cancel_get_response();
+			});
+			uint8_t *beg = (uint8_t*)resp.data();
+			uint8_t *end = beg + resp.size();
+			auto res = endec::get<Ret>(beg);
+			if (beg != end)
+				throw std::runtime_error("rpc resp error");
+			return std::move(res);
+		}
+
 		template<typename ...Args>
 		void rpc_call_impl(
 			const xutil::function_traits<void(Args...)>&,
@@ -80,6 +110,20 @@ namespace xsimple_rpc
 			using detail::make_req;
 			auto req_id = gen_req_id();
 			auto buffer = make_req(rpc_name, req_id, std::forward_as_tuple(args...));
+			auto get_resp = send_req(std::move(buffer), req_id);
+			set_cancel_get_response(std::move(get_resp.second));
+			xnet::guard guard([&] {
+				reset_cancel_get_response();
+			});
+			get_resp.first();
+		}
+
+		void rpc_call_impl(const xutil::function_traits<void(void)>&,
+			const std::string &rpc_name)
+		{
+			using detail::make_req;
+			auto req_id = gen_req_id();
+			auto buffer = make_req(rpc_name, req_id);
 			auto get_resp = send_req(std::move(buffer), req_id);
 			set_cancel_get_response(std::move(get_resp.second));
 			xnet::guard guard([&] {

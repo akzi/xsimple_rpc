@@ -3,7 +3,6 @@ namespace xsimple_rpc
 {
 	namespace detail
 	{
-		static const std::string magic_code = "xsimple_rpc";
 		struct rpc_session
 		{
 			void push_rpc_req(std::shared_ptr<rpc_req> & rpc_req)

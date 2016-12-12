@@ -4,12 +4,6 @@
 #include <vector>
 #include <list>
 
-#define DEFINE_RPC_PROTO(name, proto)\
-struct name\
-{\
-	using func_type = proto ;\
-	static constexpr char *rpc_name = #name;\
-};
 namespace xsimple_rpc
 {
 	namespace detail
@@ -27,7 +21,7 @@ namespace xsimple_rpc
 			{
 			};
 			template<typename T>
-			struct is_string :_Is_string<typename std::remove_reference<typename std::remove_const<T>::type>::type>
+			struct is_string :_Is_string<typename std::remove_const<typename std::remove_reference<T>::type>::type>
 			{
 
 			};
@@ -35,7 +29,7 @@ namespace xsimple_rpc
 			template<typename T>
 			struct remove_const_ref
 			{
-				using type = typename std::remove_reference<typename std::remove_const<T>::type>::type;
+				using type = typename std::remove_const<typename std::remove_reference<T>::type>::type;
 			};
 
 
@@ -47,10 +41,10 @@ namespace xsimple_rpc
 			}
 
 			template <typename T>
-			inline typename std::enable_if<std::is_member_function_pointer<decltype(&T::bytes)>::value, std::size_t>::type
+			inline typename std::enable_if<std::is_member_function_pointer<decltype(&T::xget_sizeof)>::value, std::size_t>::type
 				get_sizeof(const T& value)
 			{
-				return value.bytes();
+				return value.xget_sizeof();
 			}
 
 			template<typename Container, typename T = Container::value_type>
@@ -77,19 +71,19 @@ namespace xsimple_rpc
 			}
 
 			template<typename T>
-			inline typename std::enable_if<std::is_member_function_pointer<decltype(&T::decode)>::value, T>::type
+			inline typename std::enable_if<std::is_member_function_pointer<decltype(&T::xdecode)>::value, T>::type
 				get(uint8_t *&ptr)
 			{
 				T value;
-				value.decode(ptr);
+				value.xdecode(ptr);
 				return std::move(value);
 			}
 
 			template<typename T>
-			inline typename std::enable_if<std::is_member_function_pointer<decltype(&T::encode)>::value, void>::type
+			inline typename std::enable_if<std::is_member_function_pointer<decltype(&T::xencode)>::value, void>::type
 				put(uint8_t *&ptr, const T &value)
 			{
-				value.encode(ptr);
+				value.xencode(ptr);
 			}
 
 			//bool 

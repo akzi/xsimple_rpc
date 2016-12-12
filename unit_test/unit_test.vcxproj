@@ -116,6 +116,7 @@
     <ClInclude Include="..\include\detail\detail.hpp" />
     <ClInclude Include="..\include\detail\func_register.hpp" />
     <ClInclude Include="..\include\detail\endec.hpp" />
+    <ClInclude Include="..\include\detail\gen_endec.hpp" />
     <ClInclude Include="..\include\detail\rpc_req.hpp" />
     <ClInclude Include="..\include\detail\rpc_session.hpp" />
     <ClInclude Include="..\include\rpc_client.hpp" />

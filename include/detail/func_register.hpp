@@ -33,12 +33,14 @@ namespace xsimple_rpc
 		}
 	private:
 		template<typename Ret, typename ...Args>
-		void regist_help(const std::string &funcname, std::function<Ret(Args...)> &&func)
+		typename std::enable_if<sizeof...(Args) >= 2, void>::type
+			regist_help(const std::string &funcname, std::function<Ret(Args...)> &&func)
 		{
 			return regist_impl(std::move(funcname), std::move(func), std::make_index_sequence<sizeof ...(Args)>{});
 		}
 		template<typename ...Args>
-		void regist_help(const std::string &funcname, std::function<void(Args...)> &&func)
+		typename std::enable_if<sizeof...(Args) >= 2, void>::type
+			regist_help(const std::string &funcname, std::function<void(Args...)> &&func)
 		{
 			std::function<std::string(Args...)> wrapper_func(
 				[func](Args&&... args)->std::string {
@@ -46,6 +48,23 @@ namespace xsimple_rpc
 				return{};
 			});
 			return regist_impl(funcname, std::move(wrapper_func), std::make_index_sequence<sizeof ...(Args)>());
+		}
+		template<typename Ret, typename ...Args>
+		typename std::enable_if<sizeof...(Args) == 1, void>::type
+			regist_help(const std::string &funcname, std::function<Ret(Args...)> &&func)
+		{
+			return regist_impl(std::move(funcname), std::move(func));
+		}
+		template<typename ...Args>
+		typename std::enable_if<sizeof...(Args) == 1, void>::type
+			regist_help(const std::string &funcname, std::function<void(Args...)> &&func)
+		{
+			std::function<std::string(Args...)> wrapper_func(
+				[func](Args&&... args)->std::string {
+				func(std::forward<Args>(args)...);
+				return{};
+			});
+			return regist_impl(funcname, std::move(wrapper_func));
 		}
 		template<typename Ret>
 		void regist_help(const std::string &funcname, std::function<Ret(void)> &&func)
@@ -63,9 +82,13 @@ namespace xsimple_rpc
 		{
 			auto func_impl = [func](uint8_t*) ->std::string
 			{
-				std::string buffer;
 				func();
-				return{};
+				static std::string ret;
+				std::string buffer;
+				buffer.resize(detail::endec::get_sizeof(ret));
+				auto ptr = (uint8_t *)(buffer.data());
+				detail::endec::put(ptr, ret);
+				return {};
 			};
 			std::lock_guard<mutex> locker(mtex_);
 			functions_.emplace(funcname, std::move(func_impl));
@@ -75,11 +98,11 @@ namespace xsimple_rpc
 		{
 			auto func_impl = [func](uint8_t*) ->std::string
 			{
+				auto result = func();
 				std::string buffer;
-				auto ret = func();
-				auto buffer_ptr_ = (uint8_t *)(buffer.data());
-				buffer.resize(detail::endec::get_sizeof(ret));
-				detail::endec::put(buffer_ptr_, ret);
+				buffer.resize(detail::endec::get_sizeof(result));
+				auto ptr = (uint8_t *)(buffer.data());
+				detail::endec::put(ptr, result);
 				return std::move(buffer);
 			};
 			std::lock_guard<mutex> locker(mtex_);
@@ -87,18 +110,35 @@ namespace xsimple_rpc
 		}
 
 		template<typename Ret, typename ...Args, std::size_t ...Indexes>
-		void regist_impl(const std::string &funcname, std::function<Ret(Args...)> &&func, std::index_sequence<Indexes...>)
+		typename std::enable_if<sizeof...(Args) >= 2, void>::type
+			regist_impl(const std::string &funcname, std::function<Ret(Args...)> &&func, std::index_sequence<Indexes...>)
 		{
 			auto func_impl = [func](uint8_t *&ptr) ->std::string 
 			{
+				auto tp= detail::endec::get<typename endec::remove_const_ref<Args>::type...>(ptr);
+				auto result = func(std::get<Indexes>(tp)...);
 				std::string buffer;
-				std::tuple<typename endec::remove_const_ref<Args>::type...> tp 
-					= detail::endec::get<typename endec::remove_const_ref<Args>::type...>(ptr);
-				auto ret = func(std::get<Indexes>(tp)...);
-				auto buffer_ptr_ = (uint8_t *)(buffer.data());
-				buffer.resize(detail::endec::get_sizeof(ret));
-				detail::endec::put(buffer_ptr_, ret);
+				buffer.resize(detail::endec::get_sizeof(result));
+				auto buffer_ptr = (uint8_t *)(buffer.data());
+				detail::endec::put(buffer_ptr, result);
 				return std::move(buffer);
+			};
+			std::lock_guard<mutex> locker(mtex_);
+			functions_.emplace(funcname, std::move(func_impl));
+		}
+		template<typename Ret, typename Arg>
+		void regist_impl(const std::string &funcname, std::function<Ret(Arg)> &&func)
+		{
+			auto func_impl = [func](uint8_t *&ptr) ->std::string
+			{
+				using type = endec::remove_const_ref<Arg>::type;
+				Ret result = func(detail::endec::get<type>(ptr));
+				std::string buffer;
+				buffer.resize(detail::endec::get_sizeof(result));
+				auto buffer_ptr = (uint8_t *)(buffer.data());
+				detail::endec::put(buffer_ptr, result);
+				return std::move(buffer);
+				return{};
 			};
 			std::lock_guard<mutex> locker(mtex_);
 			functions_.emplace(funcname, std::move(func_impl));

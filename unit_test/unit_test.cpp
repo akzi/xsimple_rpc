@@ -5,31 +5,14 @@
 xtest_run;
 
 
-using namespace xsimple_rpc::detail;
 
 struct MyStruct
 {
 	std::string hello;
 	int world;
 	std::vector<int> ints;
-	std::size_t bytes() const
-	{
-		return endec::get_sizeof(hello) + 
-			endec::get_sizeof(world) + 
-			endec::get_sizeof(ints);
-	}
-	void encode(uint8_t *&ptr) const
-	{
-		endec::put(ptr, hello);
-		endec::put(ptr, world);
-		endec::put(ptr, ints);
-	}
-	void decode(uint8_t *&ptr)
-	{
-		hello = endec::get<decltype(hello)>(ptr);
-		world = endec::get<decltype(world)>(ptr);
-		ints = endec::get<decltype(ints)>(ptr);
-	}
+
+	XENDEC(hello, world, ints);
 
 	std::string func(int, int)
 	{
@@ -46,6 +29,7 @@ struct MyStruct
 	}
 };
 
+using namespace xsimple_rpc::detail;
 
 namespace funcs
 {
@@ -60,18 +44,20 @@ XTEST_SUITE(endnc)
 	{
 		MyStruct obj, ob2;
 		obj.hello = "hello";
-		obj.world = 192982772; 20 + 4 + 4 + 4;
+		obj.world = 192982772;
 		obj.ints = { 1,2,3,4,5 };
-		std::string buffer_;
-		buffer_.resize(obj.bytes());
-		uint8_t *ptr = (uint8_t*)buffer_.data();
-		obj.encode(ptr);
-		ptr = (uint8_t*)buffer_.data();
-		ob2.decode(ptr);
 
-		xassert(ob2.hello == obj.hello);
-		xassert(ob2.world == obj.world);
-		xassert(ob2.ints == obj.ints);
+		std::string buffer;
+		buffer.resize(obj.xget_sizeof());
+		uint8_t *ptr = (uint8_t *)buffer.data();
+		obj.xencode(ptr);
+
+		ptr = (uint8_t *)buffer.data();
+		ob2.xdecode(ptr);
+
+		xassert(obj.hello== ob2.hello);
+		xassert(obj.world == ob2.world);
+		xassert(obj.ints == ob2.ints);
 	}
 }
 
@@ -81,12 +67,20 @@ XTEST_SUITE(rpc_server)
 	{
 		using namespace xsimple_rpc;
 
+		MyStruct obj;
+		obj.hello = "hello";
+		obj.world = 192982772;
+		obj.ints = { 1,2,3,4,5 };
+
+
 		rpc_server rpc_server_;
 		rpc_server_.regist("hello world", [](int)->std::string { return{}; });
 
-		MyStruct obj;
+		
+
 		rpc_server_.regist("func", &MyStruct::func, obj);
 		rpc_server_.regist("func2", &MyStruct::func2, obj);
 		rpc_server_.regist("func3", &MyStruct::func3, obj);
+		rpc_server_.regist("get_mystruct", [&] {return obj; });
 	}
 }

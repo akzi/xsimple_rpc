@@ -102,7 +102,8 @@ namespace xsimple_rpc
 				return;
 			};
 			session.close_callback_ = close_session;
-			_conn.regist_recv_callback([itr, step,close_session,&_conn,&session,this](char *data, std::size_t len) mutable
+			_conn.regist_recv_callback([itr, step,close_session,&_conn,&session,this] 
+			(char *data, std::size_t len) mutable
 			{
 				if (len == 0)
 				{

@@ -53,5 +53,8 @@
     <ClInclude Include="..\include\detail\func_register.hpp">
       <Filter>include\detail</Filter>
     </ClInclude>
+    <ClInclude Include="..\include\detail\gen_endec.hpp">
+      <Filter>include\detail</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
