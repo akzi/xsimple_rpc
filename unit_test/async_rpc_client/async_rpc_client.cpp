@@ -44,34 +44,34 @@ int main()
 	connector.bind_success_callback([&](xnet::connection &&conn) 
 	{
 		client = new async_client(std::move(conn));
-		client->rpc_call<rpc::add>(std::forward_as_tuple(1, 1), [](int resp) {
+		client->rpc_call<rpc::add>(std::forward_as_tuple(1, 1), [](const std::string &, int resp) {
 			std::cout << resp << std::endl;
 		});
 		client->rpc_call<rpc::hello>(std::forward_as_tuple(std::string("hello")), 
-			[](const std::string &resp) {
+			[](const std::string &, const std::string &resp) {
 			std::cout << resp << std::endl;
 		});
 
 		client->rpc_call<rpc::add_str>(std::forward_as_tuple(520,std::string("-mama")),
-			[](const std::string &resp) {
+			[](const std::string &, const std::string &resp) {
 			std::cout << resp << std::endl;
 		});
 
 		client->rpc_call<rpc::func>(std::forward_as_tuple(10000,9999),
-			[](const std::string &resp) {
+			[](const std::string &, const std::string &resp) {
 			std::cout << resp << std::endl;
 		});
 
 		client->rpc_call<rpc::func2>(
-			[](const std::string &resp) {
+			[](const std::string &, const std::string &resp) {
 			std::cout << resp << std::endl;
 		});
 
-		client->rpc_call<rpc::func3>( []() {
+		client->rpc_call<rpc::func3>( [](const std::string &) {
 			std::cout << "func3" << std::endl;
 		});
 
-		client->rpc_call<rpc::get_obj>([](const MyStruct &obj) {
+		client->rpc_call<rpc::get_obj>([](const std::string &, const MyStruct &obj) {
 			std::cout << obj << std::endl;
 		});
 	});

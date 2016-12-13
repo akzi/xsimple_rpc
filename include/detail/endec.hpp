@@ -34,12 +34,24 @@ namespace xsimple_rpc
 				using type = typename std::remove_const<typename std::remove_reference<T>::type>::type;
 			};
 
+			template<typename T>
+			inline typename std::enable_if<std::is_arithmetic<T>::value, uint8_t>::type
+				get_type(T)
+			{
+				return (uint8_t)sizeof(T);
+			}
 
 			template <typename T>
 			inline typename std::enable_if<std::is_arithmetic<T>::value, std::size_t>::type
 				get_sizeof(T)
 			{
 				return sizeof(T);
+			}
+
+			template<typename T, typename = typename std::enable_if<std::is_enum<T>::value, T>::type>
+			inline std::size_t get_sizeof(T)
+			{
+				return sizeof(typename std::underlying_type<T>::type);
 			}
 
 			template <typename T>
@@ -111,6 +123,7 @@ namespace xsimple_rpc
 			{
 				return get_sizeof(tp, std::make_index_sequence<sizeof...(Args)>());
 			}
+
 
 			template<typename T>
 			inline typename std::enable_if<std::is_member_function_pointer<decltype(&T::xdecode)>::value, T>::type
@@ -315,6 +328,18 @@ namespace xsimple_rpc
 				return put(ptr, uint64_t(value));
 			}
 
+			template<typename T, typename = typename std::enable_if<std::is_enum<T>::value, T >::type>
+			void put(uint8_t *&ptr, T value)
+			{
+				put(ptr, static_cast<std::underlying_type<T>::type>(value));
+			}
+
+			template<typename T, typename = typename std::enable_if<std::is_enum<T>::value, T >::type>
+			auto get(uint8_t *&ptr, uint8_t *const end)
+			{
+				return static_cast<T>(get<std::underlying_type<T>::type>(ptr, end));
+			}
+
 			template<typename T>
 			inline typename std::enable_if<std::is_floating_point<T>::value, T>::type
 				get(uint8_t *&ptr, uint8_t *const end)
@@ -396,7 +421,9 @@ namespace xsimple_rpc
 			template<typename Container, 
 				typename key_type = typename Container::key_type, 
 				typename mapped_type = typename Container::mapped_type>
-			inline typename std::enable_if<std::is_same<std::map<key_type, mapped_type>, Container>::value, Container>::type
+			inline typename std::enable_if<
+				std::is_same<std::map<key_type, mapped_type>, Container>::value,
+				Container>::type
 				get(uint8_t *&ptr, uint8_t *const end)
 			{
 				Container container;
@@ -411,7 +438,9 @@ namespace xsimple_rpc
 
 			template<typename Container,
 				typename key_type = typename Container::key_type>
-				inline typename std::enable_if<std::is_same<std::set<key_type>, Container>::value, Container>::type
+				inline typename std::enable_if<
+					std::is_same<std::set<key_type>, Container>::value, 
+				Container>::type
 				get(uint8_t *&ptr, uint8_t *const end)
 			{
 				Container container;
