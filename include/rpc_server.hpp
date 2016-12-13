@@ -4,8 +4,8 @@ namespace xsimple_rpc
 	class rpc_server
 	{
 	public:
-		rpc_server(std::size_t io_threads = std::thread::hardware_concurrency())
-			:rpc_engine_(io_threads)
+		rpc_server(rpc_proactor_pool& pool)
+			:rpc_proactor_pool_(pool)
 		{
 		
 		}
@@ -35,14 +35,9 @@ namespace xsimple_rpc
 		}
 		rpc_server &bind(const std::string &ip_, int port)
 		{
-			rpc_engine_.get_proactor_pool().regist_accept_callback(
+			rpc_proactor_pool_.get_proactor_pool().regist_accept_callback(
 				std::bind(&rpc_server::accept_callback, this, std::placeholders::_1));
-			rpc_engine_.get_proactor_pool().bind(ip_, port);
-			return *this;
-		}
-		rpc_server &start()
-		{
-			rpc_engine_.start();
+			rpc_proactor_pool_.get_proactor_pool().bind(ip_, port);
 			return *this;
 		}
 	private:
@@ -151,6 +146,6 @@ namespace xsimple_rpc
 		func_register<std::mutex> func_register_;
 		std::mutex conns_mutex_;
 		std::list<rpc_session> conns_;
-		rpc_proactor_pool rpc_engine_;
+		rpc_proactor_pool &rpc_proactor_pool_;
 	};
 }

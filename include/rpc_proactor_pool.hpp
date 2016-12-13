@@ -88,13 +88,17 @@ namespace xsimple_rpc
 		{
 			return proactor_pool_;
 		}
+		void stop()
+		{
+			proactor_pool_.stop();
+		}
 		void start()
 		{
 			proactor_pool_.start();
 		}
 	private:
 		using msgbox_t = xnet::msgbox<std::function<void()>>;
-		using get_response = std::function<std::string()>;
+		using get_response = std::function<std::string(int64_t)>;
 		using cancel_get_response = std::function<void()>;
 
 		std::pair<get_response, cancel_get_response>
@@ -114,12 +118,15 @@ namespace xsimple_rpc
 			session->push_rpc_req(item);
 			proactor_pool_.post([session] { session->do_send_rpc();}, index);
 
-			return{ [session, item] {
+			return{ [session, item](int64_t timeout) {
 				std::unique_lock<std::mutex> locker(session->mtx_);
-				session->cv_.wait(locker, [item] { return item->result_.size() ||
-					item->status_ != rpc_req::status::e_null;
+				
+				auto res = session->cv_.wait_for(locker, std::chrono::milliseconds(timeout), [item]{
+					return item->result_.size() ||item->status_ != rpc_req::status::e_null;
 				});
-				if (item->status_ == rpc_req::status::e_cancel)
+				if (!res)
+					throw rpc_timeout();
+				else if (item->status_ == rpc_req::status::e_cancel)
 					throw rpc_cancel();
 				else if (item->status_ == rpc_req::status::e_rpc_error)
 					throw rpc_error(item->result_);

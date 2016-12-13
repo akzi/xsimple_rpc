@@ -1,6 +1,7 @@
 #pragma once
 namespace xsimple_rpc
 {
+
 	struct rpc_cancel : std::exception
 	{
 		virtual char const* what() const override
@@ -19,6 +20,13 @@ namespace xsimple_rpc
 			return error_code_.c_str();
 		}
 		std::string error_code_;
+	};
+	struct rpc_timeout: std::exception
+	{
+		virtual char const* what() const override
+		{
+			return "rpc_timeout";
+		}
 	};
 	struct rpc_connect_timeout : std::exception
 	{

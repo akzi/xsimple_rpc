@@ -4,7 +4,7 @@ namespace xsimple_rpc
 	class client
 	{
 	private:
-		using get_response = std::function<std::string()>;
+		using get_response = std::function<std::string(int64_t)>;
 		using cancel_get_response = std::function<void()>;
 		using send_rpc_result = std::pair <get_response, cancel_get_response>;
 		friend class rpc_proactor_pool;
@@ -22,6 +22,10 @@ namespace xsimple_rpc
 		{
 			if (close_rpc_)
 				close_rpc_();
+		}
+		client& set_timeout()
+		{
+
 		}
 		template<typename Proto, typename ...Args>
 		auto rpc_call(Args ...args)
@@ -64,11 +68,10 @@ namespace xsimple_rpc
 
 			auto result = send_req(std::move(buffer), req_id);
 			set_cancel_get_response(std::move(result.second));
-			auto resp = result.first();
-
 			xnet::guard guard([&] {
 				reset_cancel_get_response();
 			});
+			auto resp = result.first(rpc_timeout_);
 			uint8_t *ptr = (uint8_t*)resp.data();
 			uint8_t *end = ptr + resp.size();
 			auto res = endec::get<Ret>(ptr, end);
@@ -88,11 +91,10 @@ namespace xsimple_rpc
 
 			auto result = send_req(std::move(buffer), req_id);
 			set_cancel_get_response(std::move(result.second));
-			auto resp = result.first();
-
 			xnet::guard guard([&] {
 				reset_cancel_get_response();
 			});
+			auto resp = result.first(rpc_timeout_);
 			uint8_t *ptr = (uint8_t*)resp.data();
 			uint8_t *end = ptr + resp.size();
 			auto res = endec::get<Ret>(ptr, end);
@@ -117,7 +119,7 @@ namespace xsimple_rpc
 			xnet::guard guard([&] {
 				reset_cancel_get_response();
 			});
-			get_resp.first();
+			get_resp.first(rpc_timeout_);
 		}
 
 		void rpc_call_impl(const xutil::function_traits<void(void)>&,
@@ -133,7 +135,7 @@ namespace xsimple_rpc
 			xnet::guard guard([&] {
 				reset_cancel_get_response();
 			});
-			get_resp.first();
+			get_resp.first(rpc_timeout_);
 		}
 
 		int64_t gen_req_id()
@@ -151,6 +153,7 @@ namespace xsimple_rpc
 			std::lock_guard<std::mutex> locker(mutex_);
 			cancel_get_response_ = std::move(handle);
 		}
+		int64_t rpc_timeout_ = 0;
 		std::mutex mutex_;
 		cancel_get_response cancel_get_response_;
 		std::function<send_rpc_result(std::string &&, int64_t)> send_req;
