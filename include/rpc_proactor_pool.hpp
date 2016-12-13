@@ -48,7 +48,16 @@ namespace xsimple_rpc
 					ptr->msgbox_index_ = msgbox_index;
 					ptr->cv_.notify_one();
 				});
-				connector.async_connect(ip, port);
+				if (!connector.async_connect(ip, port))
+				{
+					auto ptr = session_wptr.lock();
+					if (!ptr)
+						return;
+					std::unique_lock<std::mutex> locker(ptr->mtx_);
+					ptr->last_error_code_ = connector.get_last_error();
+					ptr->cv_.notify_one();
+					return;
+				}
 				connectors_.emplace(index, std::move(connector));
 			};
 			proactor_pool_.post(std::move(item), msgbox_index);
