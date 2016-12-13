@@ -153,7 +153,7 @@ namespace xsimple_rpc
 			std::lock_guard<std::mutex> locker(mutex_);
 			cancel_get_response_ = std::move(handle);
 		}
-		int64_t rpc_timeout_ = 0;
+		int64_t rpc_timeout_ = 30000;
 		std::mutex mutex_;
 		cancel_get_response cancel_get_response_;
 		std::function<send_rpc_result(std::string &&, int64_t)> send_req;

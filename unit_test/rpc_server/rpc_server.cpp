@@ -15,7 +15,10 @@ struct MyStruct
 
 int main()
 {
-	xsimple_rpc::rpc_server server;
+	xsimple_rpc::rpc_proactor_pool RPP;
+	RPP.start();
+
+	xsimple_rpc::rpc_server server(RPP);
 	server.bind("127.0.0.1", 9001);
 	server.regist("add", [](int a, int &b) { return a + b; });
 	server.regist("hello", [](const std::string &hello) { return std::string("hello world"); });
@@ -30,6 +33,5 @@ int main()
 	server.regist("func2", &MyStruct::func2, obj);
 	server.regist("func3", &MyStruct::func3, obj);
 	server.regist("get_obj", [&] { return obj; });
-	server.start();
 	getchar();
 }
