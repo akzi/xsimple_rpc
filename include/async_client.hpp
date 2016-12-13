@@ -162,14 +162,13 @@ namespace xsimple_rpc
 				return;
 			});
 
-			conn_.regist_send_callback([this](std::size_t len) {
-
+			conn_.regist_send_callback([this](std::size_t len) 
+			{
 				if (len == 0)
 				{
 					conn_.close();
 					return;
 				}
-
 				if (send_buffers_.empty())
 				{
 					is_send_ = false;
@@ -190,10 +189,12 @@ namespace xsimple_rpc
 			callbacks_ = std::move(callbacks_);
 			conn_ = std::move(conn_);
 		}
+		using callback_t = std::function<void(const std::string &, std::string &)>;
+
 		step step_ = e_msg_len;
 		bool is_send_ = false;
 		std::list<std::string> send_buffers_;
-		std::list<std::pair<int64_t, std::function<void(const std::string &, std::string &)>>> callbacks_;
+		std::list<std::pair<int64_t, callback_t>> callbacks_;
 		xnet::connection conn_;
 	};
 }

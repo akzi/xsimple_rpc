@@ -176,21 +176,6 @@ XTEST_SUITE(rpc_server)
 	}
 }
 #endif
-
-
-
 XTEST_SUITE(async_client)
 {
-	XUNIT_TEST(call)
-	{
-		struct rpc
-		{
-			DEFINE_RPC_PROTO(add, int(int, int));
-		};
-		using namespace xsimple_rpc;
-		async_client client;
-		client.rpc_call<rpc::add>(std::forward_as_tuple(1,2), [](int result ) {
-			std::cout << result << std::endl;
-		});
-	}
 }

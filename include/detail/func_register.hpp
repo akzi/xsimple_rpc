@@ -116,7 +116,7 @@ namespace xsimple_rpc
 			auto func_impl = [func](uint8_t *&ptr, uint8_t *const end) ->std::string
 			{
 				auto tp= detail::endec::get<typename endec::remove_const_ref<Args>::type...>(ptr, end);
-				auto result = func(std::get<Indexes>(tp)...);
+				Ret result = func(std::get<Indexes>(tp)...);
 				std::string buffer;
 				buffer.resize(detail::endec::get_sizeof(result));
 				auto buffer_ptr = (uint8_t *)(buffer.data());

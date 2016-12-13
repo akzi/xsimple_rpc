@@ -328,13 +328,13 @@ namespace xsimple_rpc
 				return put(ptr, uint64_t(value));
 			}
 
-			template<typename T, typename = typename std::enable_if<std::is_enum<T>::value, T >::type>
+			template<typename T, typename std::enable_if<std::is_enum<T>::value, void>::type* = nullptr>
 			void put(uint8_t *&ptr, T value)
 			{
 				put(ptr, static_cast<std::underlying_type<T>::type>(value));
 			}
 
-			template<typename T, typename = typename std::enable_if<std::is_enum<T>::value, T >::type>
+			template<typename T, typename std::enable_if<std::is_enum<T>::value, void>::type* = nullptr>
 			auto get(uint8_t *&ptr, uint8_t *const end)
 			{
 				return static_cast<T>(get<std::underlying_type<T>::type>(ptr, end));
