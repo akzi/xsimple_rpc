@@ -80,8 +80,8 @@ namespace xsimple_rpc
 
 			if (session->last_error_code_.size())
 				throw std::runtime_error("connect error: " + session->last_error_code_);
-
 			auto session_id = add_session(session);
+			session->close_callback_ = [this, session_id] { del_session(session_id); };
 			client _client;
 			_client.send_req = [this, session_id](std::string &&buffer, int64_t req_id) {
 				return do_rpc_call(session_id, std::move(buffer), req_id);
@@ -149,7 +149,9 @@ namespace xsimple_rpc
 		void del_session(int64_t session_id)
 		{
 			std::lock_guard<std::mutex> locker(session_mutex_);
-			rpc_sessions_.erase(rpc_sessions_.find(session_id));
+			auto itr = rpc_sessions_.find(session_id);
+			if(itr != rpc_sessions_.end())
+				rpc_sessions_.erase(itr);
 		}
 		int64_t add_session(std::shared_ptr<rpc_session> &session)
 		{
