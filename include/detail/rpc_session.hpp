@@ -30,7 +30,6 @@ namespace xsimple_rpc
 					if (len == 0)
 					{
 						close();
-						conn_.close();
 						return;
 					}
 					is_send_ = false;
@@ -41,7 +40,6 @@ namespace xsimple_rpc
 					if (len == 0 || recv_data_callback(data, len) == false)
 					{
 						close();
-						conn_.close();
 						return;
 					}
 				});
@@ -92,6 +90,7 @@ namespace xsimple_rpc
 					itr->status_ = rpc_req::status::e_rpc_error;
 				cv_.notify_all();
 				is_close_ = true;
+				close_callback_();
 			}
 			uint32_t msg_len_ = 0;
 			bool is_close_ = false;
@@ -101,6 +100,7 @@ namespace xsimple_rpc
 			std::condition_variable cv_;
 			xnet::connection conn_;
 			int64_t msgbox_index_ = 0;
+			std::function<void()> close_callback_;
 			std::list<std::shared_ptr<rpc_req>> req_item_list_;
 			std::list<std::shared_ptr<rpc_req>> wait_rpc_resp_list_;
 		};
