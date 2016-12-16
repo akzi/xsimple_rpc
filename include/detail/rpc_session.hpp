@@ -90,6 +90,7 @@ namespace xsimple_rpc
 					itr->status_ = rpc_req::status::e_rpc_error;
 				cv_.notify_all();
 				is_close_ = true;
+				locker.unlock();
 				close_callback_();
 			}
 			uint32_t msg_len_ = 0;
