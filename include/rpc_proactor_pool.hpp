@@ -128,10 +128,11 @@ namespace xsimple_rpc
 			proactor_pool_.post([session] { session->do_send_rpc();}, index);
 
 			return{ [session, item](int64_t timeout) {
+
 				std::unique_lock<std::mutex> locker(session->mtx_);
-				
+
 				auto res = session->cv_.wait_for(locker, std::chrono::milliseconds(timeout), [item]{
-					return item->result_.size() ||item->status_ != rpc_req::status::e_null;
+					return item->status_ != rpc_req::status::e_null;
 				});
 				if (!res)
 					throw rpc_timeout();
@@ -140,6 +141,7 @@ namespace xsimple_rpc
 				else if (item->status_ == rpc_req::status::e_rpc_error)
 					throw rpc_error(item->result_);
 				return item->result_;
+
 			},[session, item] {
 				item->status_ = rpc_req::status::e_cancel;
 				session->cv_.notify_one();
