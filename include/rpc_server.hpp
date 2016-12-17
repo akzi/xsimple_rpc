@@ -54,9 +54,15 @@ namespace xsimple_rpc
 			}
 			void init()
 			{
-				conn_.regist_send_callback([this](std::size_t len) {
+				conn_.regist_send_callback([this](std::size_t len) 
+				{
 					if (len == 0)
 					{
+						if (in_callback_)
+						{
+							is_close_ = true;
+							return;
+						}
 						conn_.close();
 						close_callback_();
 						return;
@@ -70,6 +76,8 @@ namespace xsimple_rpc
 					resp_list_.pop_front();
 				});
 			}
+			bool in_callback_ = false;
+			bool is_close_ = false;
 			bool is_send_ = false;
 			std::list<std::string> resp_list_;
 			std::function<void()> close_callback_;
@@ -97,7 +105,7 @@ namespace xsimple_rpc
 				return;
 			};
 			session.close_callback_ = close_session;
-			_conn.regist_recv_callback([itr, step,close_session,&_conn,&session,this] 
+			_conn.regist_recv_callback([itr, step,close_session, &_conn, &session,this] 
 			(char *data, std::size_t len) mutable
 			{
 				if (len == 0)
@@ -134,14 +142,16 @@ namespace xsimple_rpc
 					return false;
 				uint64_t req_id = detail::endec::get<uint64_t>(ptr, end);
 				std::string req_name = detail::endec::get<std::string>(ptr, end);
+				session.in_callback_ = true;
 				session.do_send_resp(detail::make_resp(req_id, func_register_.invoke(req_name, ptr, end)));
+				session.in_callback_ = false;
 			}
 			catch (const std::exception& e)
 			{
 				std::cout << e.what() << std::endl;
 				return false;
 			}
-			return true;
+			return !session.is_close_;
 		}
 		func_register<std::mutex> func_register_;
 		std::mutex conns_mutex_;
