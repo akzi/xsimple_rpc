@@ -488,8 +488,8 @@ namespace xsimple_rpc
 			inline std::tuple<First, Rest...> get_tp_impl(uint8_t *&ptr,uint8_t *const end, std::index_sequence<Tndexes...>)
 			{
 				using value_type = typename std::remove_reference<typename std::remove_const<First>::type>::type;
-				return std::tuple_cat(std::forward_as_tuple(get<value_type>(ptr, end)),
-					get_tp_impl<Rest...>(ptr,end, std::make_index_sequence<sizeof ...(Rest)>()));
+				auto first = get<value_type>(ptr, end);
+				return std::tuple_cat(std::forward_as_tuple(std::move(first)), get_tp_impl<Rest...>(ptr, end, std::make_index_sequence<sizeof ...(Rest)>()));
 			}
 
 			template<typename ...Args>
