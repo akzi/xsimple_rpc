@@ -9,6 +9,7 @@
 #include <condition_variable>
 //deps
 #include "../../../xnet/include/xnet.hpp"
+#include "../../../xutil/include/guard.hpp"
 #include "../../../xutil/include/function_traits.hpp"
 #include "../../../xutil/include/make_index_sequence.hpp"
 #include "endec.hpp"

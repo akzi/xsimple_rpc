@@ -8,7 +8,11 @@ struct MyStruct
 
 	XENDEC(hello, world, ints);
 
-	std::string func(int, int) { return hello; }
+	std::string func(int a, int b) 
+	{ 
+		std::cout << "a:" << a << " b:" << b << std::endl;
+		return hello; 
+	}
 	std::string func2() { return hello; }
 	void func3()const { return; }
 };

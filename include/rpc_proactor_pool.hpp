@@ -27,7 +27,7 @@ namespace xsimple_rpc
 				auto index = connector_index_;
 				connector.bind_fail_callback([this, index, session_wptr](std::string errorc_code)
 				{
-					xnet::guard guard([this, index] { del_connector(index); });
+					xutil::guard guard([this, index] { del_connector(index); });
 					auto ptr = session_wptr.lock();
 					if (!ptr)
 						return;
@@ -38,7 +38,7 @@ namespace xsimple_rpc
 				connector.bind_success_callback(
 					[this, index, session_wptr, msgbox_index](xnet::connection &&conn)
 				{
-					xnet::guard guard([this, index] { del_connector(index); });
+					xutil::guard guard([this, index] { del_connector(index); });
 					auto ptr = session_wptr.lock();
 					if (!ptr)
 						return;

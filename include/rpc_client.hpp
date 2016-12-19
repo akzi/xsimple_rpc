@@ -68,7 +68,7 @@ namespace xsimple_rpc
 
 			auto result = send_req(std::move(buffer), req_id);
 			set_cancel_get_response(std::move(result.second));
-			xnet::guard guard([&] {
+			xutil::guard guard([&] {
 				reset_cancel_get_response();
 			});
 			auto resp = result.first(rpc_timeout_);
@@ -132,7 +132,7 @@ namespace xsimple_rpc
 				throw std::logic_error("client isn't connected");
 			auto get_resp = send_req(std::move(buffer), req_id);
 			set_cancel_get_response(std::move(get_resp.second));
-			xnet::guard guard([&] {
+			xutil::guard guard([&] {
 				reset_cancel_get_response();
 			});
 			get_resp.first(rpc_timeout_);
