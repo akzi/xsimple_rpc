@@ -1,4 +1,5 @@
 #pragma once
+#include <atomic>
 namespace xsimple_rpc
 {
 	using namespace detail;
@@ -69,7 +70,7 @@ namespace xsimple_rpc
 					return session->last_error_code_.size() || session->conn_.valid();
 				});
 				if (!res)
-					throw std::exception("connect_timeout");
+					throw std::runtime_error("connect_timeout");
 			}
 			else
 			{
@@ -179,7 +180,7 @@ namespace xsimple_rpc
 		int64_t session_id_ = 1;
 		std::map<int64_t, std::shared_ptr<rpc_session>> rpc_sessions_;
 
-		std::atomic_uint64_t msgboxs_index_ = 0;
+		std::atomic<uint64_t> msgboxs_index_ { 0 };
 
 		std::mutex connectors_mutex_;
 		int64_t connector_index_ = 0;

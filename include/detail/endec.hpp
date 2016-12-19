@@ -13,6 +13,9 @@ namespace xsimple_rpc
 
 		namespace endec
 		{
+			HAS_MEMBER(xencode);
+			HAS_MEMBER(xdecode);
+
 			template <typename>
 			struct _Is_string :std::false_type
 			{
@@ -126,8 +129,8 @@ namespace xsimple_rpc
 
 
 			template<typename T>
-			inline typename std::enable_if<std::is_member_function_pointer<decltype(&T::xdecode)>::value, T>::type
-				get(uint8_t *&ptr, uint8_t *const end)
+			inline typename std::enable_if<has_member_xdecode<T, uint8_t *, uint8_t *const>::value, T>::type
+			       	get(uint8_t *&ptr, uint8_t *const end)
 			{
 				T value;
 				value.xdecode(ptr, end);
@@ -135,8 +138,8 @@ namespace xsimple_rpc
 			}
 
 			template<typename T>
-			inline typename std::enable_if<std::is_member_function_pointer<decltype(&T::xencode)>::value, void>::type
-				put(uint8_t *&ptr, const T &value)
+			inline  typename std::enable_if<has_member_xencode<T, uint8_t *&>::value, void>::type
+		       		put(uint8_t *&ptr, const T &value)
 			{
 				value.xencode(ptr);
 			}
@@ -178,7 +181,7 @@ namespace xsimple_rpc
 			{
 				if (end - ptr < sizeof(T))
 					throw std::out_of_range("endec::get out_of_range");
-				return static_cast<T>(get<uint8_t>(ptr));
+				return static_cast<T>(get<uint8_t>(ptr, end));
 			}
 
 			template<typename T>
@@ -225,7 +228,7 @@ namespace xsimple_rpc
 			{
 				if (end - ptr < sizeof(T))
 					throw std::out_of_range("endec::get out_of_range");
-				return static_cast<T>(get<uint16_t>(ptr));
+				return static_cast<T>(get<uint16_t>(ptr, end));
 			}
 
 			template<typename T>
@@ -331,13 +334,13 @@ namespace xsimple_rpc
 			template<typename T, typename std::enable_if<std::is_enum<T>::value, void>::type* = nullptr>
 			void put(uint8_t *&ptr, T value)
 			{
-				put(ptr, static_cast<std::underlying_type<T>::type>(value));
+				put(ptr, static_cast<typename std::underlying_type<T>::type>(value));
 			}
 
 			template<typename T, typename std::enable_if<std::is_enum<T>::value, void>::type* = nullptr>
 			auto get(uint8_t *&ptr, uint8_t *const end)
 			{
-				return static_cast<T>(get<std::underlying_type<T>::type>(ptr, end));
+				return static_cast<T>(get<typename std::underlying_type<T>::type>(ptr, end));
 			}
 
 			template<typename T>

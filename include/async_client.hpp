@@ -179,7 +179,7 @@ namespace xsimple_rpc
 			});
 			conn_.async_recv(sizeof(uint32_t));
 		}
-		void move_reset(async_client &client)
+		void move_reset(async_client &&client)
 		{
 			if (&client == this)
 				return;

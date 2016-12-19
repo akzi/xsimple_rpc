@@ -17,6 +17,7 @@ namespace xsimple_rpc
 		client &operator=(client && other)
 		{
 			move_reset(std::move(other));
+			return *this;
 		}
 		~client()
 		{
@@ -68,13 +69,13 @@ namespace xsimple_rpc
 
 			auto result = send_req(std::move(buffer), req_id);
 			set_cancel_get_response(std::move(result.second));
-			xutil::guard guard([&] {
+			xutil::guard guard{[&] {
 				reset_cancel_get_response();
-			});
+			}};
 			auto resp = result.first(rpc_timeout_);
 			uint8_t *ptr = (uint8_t*)resp.data();
 			uint8_t *end = ptr + resp.size();
-			auto res = endec::get<Ret>(ptr, end);
+			auto res = detail::endec::get<Ret>(ptr, end);
 			if (ptr != end)
 				throw std::runtime_error("rpc resp error");
 			return std::move(res);
@@ -91,13 +92,13 @@ namespace xsimple_rpc
 
 			auto result = send_req(std::move(buffer), req_id);
 			set_cancel_get_response(std::move(result.second));
-			xnet::guard guard([&] {
+			xutil::guard guard{[&] {
 				reset_cancel_get_response();
-			});
+			}};
 			auto resp = result.first(rpc_timeout_);
 			uint8_t *ptr = (uint8_t*)resp.data();
 			uint8_t *end = ptr + resp.size();
-			auto res = endec::get<Ret>(ptr, end);
+			auto res = detail::endec::get<Ret>(ptr, end);
 			if (ptr != end)
 				throw std::runtime_error("rpc resp error");
 			return std::move(res);
@@ -116,7 +117,7 @@ namespace xsimple_rpc
 				throw std::logic_error("client isn't connected");
 			auto get_resp = send_req(std::move(buffer), req_id);
 			set_cancel_get_response(std::move(get_resp.second));
-			xnet::guard guard([&] {
+			xutil::guard guard([&] {
 				reset_cancel_get_response();
 			});
 			get_resp.first(rpc_timeout_);
@@ -140,8 +141,7 @@ namespace xsimple_rpc
 
 		int64_t gen_req_id()
 		{
-			static std::atomic_int64_t req_id = 1;
-			return req_id++;
+			return req_id_++;
 		}
 		void reset_cancel_get_response()
 		{
@@ -153,6 +153,7 @@ namespace xsimple_rpc
 			std::lock_guard<std::mutex> locker(mutex_);
 			cancel_get_response_ = std::move(handle);
 		}
+		int64_t req_id_ = 1;
 		int64_t rpc_timeout_ = 30000;
 		std::mutex mutex_;
 		cancel_get_response cancel_get_response_;

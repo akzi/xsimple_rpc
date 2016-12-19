@@ -1,4 +1,4 @@
-#include "../../Include/xsimple_rpc.hpp"
+#include "xsimple_rpc.hpp"
 
 struct MyStruct
 {

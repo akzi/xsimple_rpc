@@ -4,7 +4,7 @@ namespace xsimple_rpc
 
 	struct rpc_cancel : std::exception
 	{
-		virtual char const* what() const override
+		virtual char const* what() const  throw()
 		{
 			return "rpc_cancel_error";
 		}
@@ -15,7 +15,7 @@ namespace xsimple_rpc
 			:error_code_(error_code)
 		{
 		}
-		virtual char const* what() const override
+		virtual char const* what() const throw()
 		{
 			return error_code_.c_str();
 		}
@@ -23,14 +23,14 @@ namespace xsimple_rpc
 	};
 	struct rpc_timeout: std::exception
 	{
-		virtual char const* what() const override
+		virtual char const* what() const throw()
 		{
 			return "rpc_timeout";
 		}
 	};
 	struct rpc_connect_timeout : std::exception
 	{
-		virtual char const* what() const override
+		virtual char const* what() const throw()
 		{
 			return "rpc_connect_timeout";
 		}
