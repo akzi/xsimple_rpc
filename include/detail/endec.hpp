@@ -15,6 +15,7 @@ namespace xsimple_rpc
 		{
 			HAS_MEMBER(xencode);
 			HAS_MEMBER(xdecode);
+			HAS_MEMBER(xget_sizeof);
 
 			template <typename>
 			struct _Is_string :std::false_type
@@ -58,7 +59,7 @@ namespace xsimple_rpc
 			}
 
 			template <typename T>
-			inline typename std::enable_if<std::is_member_function_pointer<decltype(&T::xget_sizeof)>::value, std::size_t>::type
+			inline typename std::enable_if<has_member_xget_sizeof<T>::value, std::size_t>::type
 				get_sizeof(const T& value)
 			{
 				return value.xget_sizeof();
@@ -129,7 +130,7 @@ namespace xsimple_rpc
 
 
 			template<typename T>
-			inline typename std::enable_if<has_member_xdecode<T, uint8_t *, uint8_t *const>::value, T>::type
+			inline typename std::enable_if<has_member_xdecode<T, uint8_t *&, uint8_t *const>::value, T>::type
 			       	get(uint8_t *&ptr, uint8_t *const end)
 			{
 				T value;
