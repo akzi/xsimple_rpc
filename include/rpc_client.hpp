@@ -24,9 +24,10 @@ namespace xsimple_rpc
 			if (close_rpc_)
 				close_rpc_();
 		}
-		client& set_timeout()
+		client& set_timeout(int64_t rpc_timeout)
 		{
-
+			rpc_timeout_ = rpc_timeout;
+			return *this;
 		}
 		template<typename Proto, typename ...Args>
 		auto rpc_call(Args ...args)

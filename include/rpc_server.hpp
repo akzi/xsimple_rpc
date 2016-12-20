@@ -100,7 +100,7 @@ namespace xsimple_rpc
 
 			auto close_session = [this, &_conn, itr] {
 				_conn.close();
-				std::lock_guard<std::mutex> locker(conns_mutex_);
+				std::lock_guard<std::mutex> conns_clocker(conns_mutex_);
 				conns_.erase(itr);
 				return;
 			};

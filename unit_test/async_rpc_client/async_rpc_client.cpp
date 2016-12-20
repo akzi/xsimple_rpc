@@ -1,4 +1,4 @@
-#include "../../Include/xsimple_rpc.hpp"
+#include "../../include/xsimple_rpc.hpp"
 
 
 struct MyStruct
@@ -71,11 +71,14 @@ int main()
 			std::cout << "func3" << std::endl;
 		});
 
-		client->rpc_call<rpc::get_obj>([](const std::string &, const MyStruct &obj) {
+		client->rpc_call<rpc::get_obj>([&](const std::string &, const MyStruct &obj) {
 			std::cout << obj << std::endl;
+			proactor.stop();
 		});
 	});
-	connector.bind_fail_callback([](auto error_code) {});
+	connector.bind_fail_callback([](auto error_code) {
+		std::cout << "connect failed error_code:"<<error_code << std::endl;
+	});
 	connector.async_connect("127.0.0.1", 9001);
 	proactor.run();
 }

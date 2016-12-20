@@ -63,7 +63,8 @@ namespace xsimple_rpc
 				}
 				try
 				{
-					auto magic_code = endec::get<std::string>(ptr, end);
+					if(magic_code != endec::get<std::string>(ptr, end))
+						return false;
 					auto req_id = endec::get<int64_t>(ptr, end);
 					auto item = wait_rpc_resp_list_.front();
 					wait_rpc_resp_list_.pop_front();
@@ -85,9 +86,16 @@ namespace xsimple_rpc
 			{
 				std::unique_lock<std::mutex> locker(mtx_);
 				for (auto &itr : wait_rpc_resp_list_)
+				{
 					itr->status_ = rpc_req::status::e_rpc_error;
+					itr->result_ = "lost connection";
+				}
 				for (auto &itr : req_item_list_)
+				{
 					itr->status_ = rpc_req::status::e_rpc_error;
+					itr->result_ = "lost connection";
+				}
+					
 				cv_.notify_all();
 				is_close_ = true;
 				locker.unlock();
