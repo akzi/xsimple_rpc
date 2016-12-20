@@ -1,4 +1,4 @@
-#include "../../Include/xsimple_rpc.hpp"
+#include "../../include/xsimple_rpc.hpp"
 
 
 struct MyStruct
@@ -48,7 +48,8 @@ int main()
 		std::cout << "func: " << client.rpc_call<rpc::func>(2,3) << std::endl;;
 		std::cout << "func2: " << client.rpc_call<rpc::func2>() << std::endl;;
 		std::cout << "func3: " ; (client.rpc_call<rpc::func3>(), std::cout << std::endl);
-		std::cout << "get_obj: " << client.rpc_call<rpc::get_obj>() << std::endl;
+		auto obj = client.rpc_call<rpc::get_obj>();
+		std::cout << "get_obj: " << obj<< std::endl;
 	}
 	catch (const std::exception& e)
 	{

@@ -8,7 +8,7 @@ CFLAGS = -g -W \
 -Winvalid-pch \
 -std=c++1z \
 -I ./../../include \
--l pthread
+-lpthread
 run:server
 	./rpc_client
 server:rpc_client
