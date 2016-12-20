@@ -143,7 +143,7 @@ namespace xsimple_rpc
 					{
 						if (endec::get<std::string>(ptr, end) != magic_code)
 							goto _close;
-						auto req_id = endec::get<uint64_t>(ptr, end);
+						auto req_id = endec::get<int64_t>(ptr, end);
 						auto resp = endec::get<std::string>(ptr, end);
 						if (callbacks_.empty() || callbacks_.front().first != req_id)
 							goto _close;

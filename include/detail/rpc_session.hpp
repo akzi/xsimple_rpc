@@ -63,7 +63,8 @@ namespace xsimple_rpc
 				}
 				try
 				{
-					auto magic_code = endec::get<std::string>(ptr, end);
+					if(magic_code != endec::get<std::string>(ptr, end))
+						return false;
 					auto req_id = endec::get<int64_t>(ptr, end);
 					auto item = wait_rpc_resp_list_.front();
 					wait_rpc_resp_list_.pop_front();

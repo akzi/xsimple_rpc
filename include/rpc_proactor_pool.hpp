@@ -22,7 +22,7 @@ namespace xsimple_rpc
 			auto msgbox_index = msgboxs_index_.fetch_add(1) % proactor_pool_.get_size();
 			auto item = [ip, port, session_wptr, this, msgbox_index]
 			{
-				std::lock_guard<std::mutex> locker(connectors_mutex_);
+				std::lock_guard<std::mutex> connections_locker(connectors_mutex_);
 				auto connector = proactor_pool_.get_current_proactor().get_connector();
 				connector_index_++;
 				auto index = connector_index_;
@@ -32,7 +32,7 @@ namespace xsimple_rpc
 					auto ptr = session_wptr.lock();
 					if (!ptr)
 						return;
-					std::unique_lock<std::mutex> locker(ptr->mtx_);
+					std::unique_lock<std::mutex> session_locker(ptr->mtx_);
 					ptr->last_error_code_ = errorc_code;
 					ptr->cv_.notify_one();
 				}); 
@@ -43,7 +43,7 @@ namespace xsimple_rpc
 					auto ptr = session_wptr.lock();
 					if (!ptr)
 						return;
-					std::unique_lock<std::mutex> locker(ptr->mtx_);
+					std::unique_lock<std::mutex> session_locker(ptr->mtx_);
 					ptr->conn_ = std::move(conn);
 					ptr->init_conn();
 					ptr->msgbox_index_ = msgbox_index;
@@ -54,7 +54,7 @@ namespace xsimple_rpc
 					auto ptr = session_wptr.lock();
 					if (!ptr)
 						return;
-					std::unique_lock<std::mutex> locker(ptr->mtx_);
+					std::unique_lock<std::mutex> session_locker(ptr->mtx_);
 					ptr->last_error_code_ = connector.get_last_error();
 					ptr->cv_.notify_one();
 					return;
@@ -62,10 +62,10 @@ namespace xsimple_rpc
 				connectors_.emplace(index, std::move(connector));
 			};
 			proactor_pool_.post(std::move(item), msgbox_index);
-			std::unique_lock<std::mutex> locker(session->mtx_);
+			std::unique_lock<std::mutex> session_locker(session->mtx_);
 			if (timeout_millis > 0)
 			{
-				auto res = session->cv_.wait_for(locker,
+				auto res = session->cv_.wait_for(session_locker,
 					std::chrono::milliseconds(timeout_millis), [&session] {
 					return session->last_error_code_.size() || session->conn_.valid();
 				});
@@ -74,7 +74,7 @@ namespace xsimple_rpc
 			}
 			else
 			{
-				session->cv_.wait(locker,[&session] {
+				session->cv_.wait(session_locker,[&session] {
 					return session->last_error_code_.size() || session->conn_.valid();
 				});
 			}
@@ -130,9 +130,9 @@ namespace xsimple_rpc
 
 			return{ [session, item](int64_t timeout) {
 
-				std::unique_lock<std::mutex> locker(session->mtx_);
+				std::unique_lock<std::mutex> session_locker(session->mtx_);
 
-				auto res = session->cv_.wait_for(locker, std::chrono::milliseconds(timeout), [item]{
+				auto res = session->cv_.wait_for(session_locker, std::chrono::milliseconds(timeout), [item]{
 					return item->status_ != rpc_req::status::e_null;
 				});
 				if (!res)

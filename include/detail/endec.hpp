@@ -150,7 +150,7 @@ namespace xsimple_rpc
 			inline typename std::enable_if<std::is_same<T, bool>::value, T>::type
 				get(uint8_t *&ptr, uint8_t *const end)
 			{
-				if (end - ptr < sizeof(T))
+				if (end - ptr < (int)sizeof(T))
 					throw std::out_of_range("endec::get out_of_range");
 				uint8_t value = ptr[0];
 				ptr += sizeof(value);
@@ -169,7 +169,7 @@ namespace xsimple_rpc
 			inline typename std::enable_if<std::is_same<T, uint8_t>::value, T>::type
 				get(uint8_t *&ptr, uint8_t *const end)
 			{
-				if (end - ptr < sizeof(T))
+				if (end - ptr < (int)sizeof(T))
 					throw std::out_of_range("endec::get out_of_range");
 				uint8_t value = ptr[0];
 				ptr += sizeof(value);
@@ -180,7 +180,7 @@ namespace xsimple_rpc
 			inline typename std::enable_if<std::is_same<T, int8_t>::value, T>::type
 				get(uint8_t *&ptr, uint8_t *const end)
 			{
-				if (end - ptr < sizeof(T))
+				if (end - ptr < (int)sizeof(T))
 					throw std::out_of_range("endec::get out_of_range");
 				return static_cast<T>(get<uint8_t>(ptr, end));
 			}
@@ -205,7 +205,7 @@ namespace xsimple_rpc
 			inline typename std::enable_if<std::is_same<T, uint16_t>::value, T>::type
 				get(uint8_t *&ptr, uint8_t *const end)
 			{
-				if (end - ptr < sizeof(T))
+				if (end - ptr < (int)sizeof(T))
 					throw std::out_of_range("endec::get out_of_range");
 				uint16_t value =
 					(((uint16_t)ptr[0]) << 8) |
@@ -227,7 +227,7 @@ namespace xsimple_rpc
 			inline typename std::enable_if<std::is_same<T, int16_t>::value, T>::type
 				get(uint8_t *&ptr, uint8_t *const end)
 			{
-				if (end - ptr < sizeof(T))
+				if (end - ptr < (int)sizeof(T))
 					throw std::out_of_range("endec::get out_of_range");
 				return static_cast<T>(get<uint16_t>(ptr, end));
 			}
@@ -243,7 +243,7 @@ namespace xsimple_rpc
 			inline typename std::enable_if<std::is_same<T, uint32_t>::value, T>::type
 				get(uint8_t *&ptr, uint8_t *const end)
 			{
-				if (end - ptr < sizeof(T))
+				if (end - ptr < (int)sizeof(T))
 					throw std::out_of_range("endec::get out_of_range");
 				uint32_t value =
 					(((uint32_t)ptr[0]) << 24) |
@@ -270,7 +270,7 @@ namespace xsimple_rpc
 			inline typename std::enable_if<std::is_same<T, int32_t>::value, T>::type
 				get(uint8_t *&ptr, uint8_t *const end)
 			{
-				if (end - ptr < sizeof(T))
+				if (end - ptr < (int)sizeof(T))
 					throw std::out_of_range("endec::get out_of_range");
 				return static_cast<T>(get<uint32_t>(ptr, end));
 			}
@@ -286,7 +286,7 @@ namespace xsimple_rpc
 			inline typename std::enable_if<std::is_same<T, uint64_t>::value, T>::type
 				get(uint8_t *&ptr, uint8_t *const end)
 			{
-				if (end - ptr < sizeof(T))
+				if (end - ptr < (int)sizeof(T))
 					throw std::out_of_range("endec::get out_of_range");
 				uint64_t value =
 					((((uint64_t)ptr[0]) << 56) |
@@ -320,7 +320,7 @@ namespace xsimple_rpc
 			inline typename std::enable_if<std::is_same<T, int64_t>::value, T>::type
 				get(uint8_t *&ptr, uint8_t *const end)
 			{
-				if (end - ptr < sizeof(T))
+				if (end - ptr < (int)sizeof(T))
 					throw std::out_of_range("endec::get out_of_range");
 				return static_cast<T>(get<uint64_t>(ptr, end));
 			}
@@ -348,7 +348,7 @@ namespace xsimple_rpc
 			inline typename std::enable_if<std::is_floating_point<T>::value, T>::type
 				get(uint8_t *&ptr, uint8_t *const end)
 			{
-				if (end - ptr < sizeof(T))
+				if (end - ptr < (int)sizeof(T))
 					throw std::out_of_range("");
 				auto value = *reinterpret_cast<T*>(ptr);
 				ptr += sizeof(value);
@@ -369,7 +369,7 @@ namespace xsimple_rpc
 				get(uint8_t *&ptr, uint8_t *const end)
 			{
 				auto len = get<uint32_t>(ptr, end);
-				if (end - ptr < len)
+				if (end - ptr < (int)len)
 					throw std::out_of_range("");
 				std::string result((char*)ptr, len);
 				ptr += len;
@@ -493,7 +493,8 @@ namespace xsimple_rpc
 			{
 				using value_type = typename std::remove_reference<typename std::remove_const<First>::type>::type;
 				auto first = get<value_type>(ptr, end);
-				return std::tuple_cat(std::forward_as_tuple(std::move(first)), get_tp_impl<Rest...>(ptr, end, std::make_index_sequence<sizeof ...(Rest)>()));
+				return std::tuple_cat(std::forward_as_tuple(std::move(first)), 
+					get_tp_impl<Rest...>(ptr, end, std::make_index_sequence<sizeof ...(Rest)>()));
 			}
 
 			template<typename ...Args>
