@@ -65,21 +65,28 @@ namespace xsimple_rpc
 				{
 					if(magic_code != endec::get<std::string>(ptr, end))
 						return false;
-					auto req_id = endec::get<int64_t>(ptr, end);
+
 					auto item = wait_rpc_resp_list_.front();
 					wait_rpc_resp_list_.pop_front();
+
+					auto req_id = endec::get<int64_t>(ptr, end);
 					if (item->req_id_ != req_id)
+					{
+						std::cout << "req_id != item->req_id_" << std::endl;
 						return false;
-					conn_.async_recv(sizeof(uint32_t));
+					}
+					std::unique_lock<std::mutex> locker(mtx_);
 					item->result_ = endec::get<std::string>(ptr, end);
 					item->status_ = rpc_req::status::e_ok;
 					cv_.notify_one();
+
 				}
 				catch (const std::exception& e)
 				{
 					std::cout << e.what() << std::endl;
 					return false;
 				}
+				conn_.async_recv(sizeof(uint32_t));
 				return true;
 			}
 			void close()

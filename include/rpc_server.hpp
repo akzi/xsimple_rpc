@@ -50,12 +50,14 @@ namespace xsimple_rpc
 					resp_list_.emplace_back(std::move(resp));
 					return;
 				}
+				is_send_ = true;
 				conn_.async_send(std::move(resp));
 			}
 			void init()
 			{
 				conn_.regist_send_callback([this](std::size_t len) 
 				{
+					is_send_ = false;
 					if (len == 0)
 					{
 						if (in_callback_)
@@ -69,9 +71,9 @@ namespace xsimple_rpc
 					}
 					if (resp_list_.empty())
 					{
-						is_send_ = false;
 						return;
 					}
+					is_send_ = true;
 					conn_.async_send(std::move(resp_list_.front()));
 					resp_list_.pop_front();
 				});

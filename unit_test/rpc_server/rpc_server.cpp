@@ -10,7 +10,6 @@ struct MyStruct
 
 	std::string func(int a, int b) 
 	{ 
-		std::cout << "a:" << a << " b:" << b << std::endl;
 		return hello; 
 	}
 	std::string func2() { return hello; }

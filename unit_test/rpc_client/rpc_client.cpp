@@ -27,6 +27,9 @@ int main()
 {
 	xsimple_rpc::rpc_proactor_pool rpc_proactor;
 	rpc_proactor.start();
+
+
+	
 	try
 	{
 		//define rpc
@@ -42,14 +45,28 @@ int main()
 		};
 
 		auto client = rpc_proactor.connect("127.0.0.1", 9001, 0);
-		std::cout << "add: " << client.rpc_call<rpc::add>(1, 2) << std::endl;
-		std::cout << "hello: "<< client.rpc_call<rpc::hello>("hello") << std::endl;;
-		std::cout << "add_str: "<< client.rpc_call<rpc::add_str>(12345,"hello") << std::endl;;
-		std::cout << "func: " << client.rpc_call<rpc::func>(2,3) << std::endl;;
-		std::cout << "func2: " << client.rpc_call<rpc::func2>() << std::endl;;
-		std::cout << "func3: " ; (client.rpc_call<rpc::func3>(), std::cout << std::endl);
-		auto obj = client.rpc_call<rpc::get_obj>();
-		std::cout << "get_obj: " << obj<< std::endl;
+		do
+		{
+			/*std::cout << "add: " << client.rpc_call<rpc::add>(1, 2) << std::endl;
+			std::cout << "hello: " << client.rpc_call<rpc::hello>("hello") << std::endl;;
+			std::cout << "add_str: " << client.rpc_call<rpc::add_str>(12345, "hello") << std::endl;;
+			std::cout << "func: " << client.rpc_call<rpc::func>(2, 3) << std::endl;;
+			std::cout << "func2: " << client.rpc_call<rpc::func2>() << std::endl;;
+			std::cout << "func3: "; (client.rpc_call<rpc::func3>(), std::cout << std::endl);
+			auto obj = client.rpc_call<rpc::get_obj>();
+			std::cout << "get_obj: " << obj << std::endl;*/
+
+			client.rpc_call<rpc::add>(1, 2);
+			client.rpc_call<rpc::hello>("hello");
+			client.rpc_call<rpc::add_str>(12345, "hello");
+			client.rpc_call<rpc::func>(2, 3);
+			client.rpc_call<rpc::func2>();
+			client.rpc_call<rpc::func3>();
+			client.rpc_call<rpc::get_obj>();
+
+		} while (true);
+		//auto client = rpc_proactor.connect("127.0.0.1", 9001, 0);
+		
 	}
 	catch (const std::exception& e)
 	{
